@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectSphere - Chat Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom background lines */
+        .background-lines {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            transform-origin: center;
+        }
+        .line-1 {
+            width: 200%;
+            height: 1px;
+            top: 20%;
+            left: -50%;
+            transform: rotate(45deg);
+            animation: moveLine1 10s linear infinite;
+        }
+        .line-2 {
+            width: 200%;
+            height: 1px;
+            bottom: 20%;
+            left: -50%;
+            transform: rotate(-45deg);
+            animation: moveLine2 12s linear infinite;
+        }
+        .line-3 {
+            width: 1px;
+            height: 200%;
+            left: 30%;
+            top: -50%;
+            transform: rotate(30deg);
+            animation: moveLine3 8s linear infinite;
+        }
+
+        /* Animations for lines */
+        @keyframes moveLine1 {
+            0% { transform: rotate(45deg) translateX(-100%); }
+            100% { transform: rotate(45deg) translateX(100%); }
+        }
+        @keyframes moveLine2 {
+            0% { transform: rotate(-45deg) translateX(100%); }
+            100% { transform: rotate(-45deg) translateX(-100%); }
+        }
+        @keyframes moveLine3 {
+            0% { transform: rotate(30deg) translateY(-100%); }
+            100% { transform: rotate(30deg) translateY(100%); }
+        }
+
+        /* Logo animation */
+        .logo-animation {
+            animation: rotateFlip 4s ease-in-out infinite;
+        }
+        @keyframes rotateFlip {
+            0% { transform: rotate(0deg) scaleX(1); }
+            25% { transform: rotate(90deg) scaleX(1); }
+            50% { transform: rotate(180deg) scaleX(-1); }
+            75% { transform: rotate(270deg) scaleX(-1); }
+            100% { transform: rotate(360deg) scaleX(1); }
+        }
+
+        /* Custom scrollbar */
+        .chat-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-area::-webkit-scrollbar-thumb {
+            background: #6b7280;
+            border-radius: 3px;
+        }
+        .chat-area::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* Responsive sidebar toggle */
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 50;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .chat-area {
+                margin-left: 0 !important;
+            }
+        }
+
+        /* Notification badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 9999px;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex bg-gray-100">
+    <!-- Background Lines -->
+    <div class="background-lines">
+        <div class="line line-1"></div>
+        <div class="line line-2"></div>
+        <div class="line line-3"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar w-64 p-4 flex flex-col h-screen bg-gray-800 text-white shadow-lg">
+        <!-- Profile Section -->
+        <div class="flex items-center mb-6">
+            <a href="/profile" class="flex items-center">
+                <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center mr-3 logo-animation">
+                    <img id="sidebarProfilePhoto" src="https://via.placeholder.com/48" alt="Profile Photo" class="w-full h-full rounded-full object-cover">
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold">John Doe</h2>
+                    <p class="text-sm text-gray-400">Software Engineer</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Online Users -->
+        <div class="mb-6">
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">ONLINE USERS</h3>
+            <ul class="space-y-2">
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    <span>Alice Smith</span>
+                </li>
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    <span>Bob Johnson</span>
+                </li>
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    <span>Carol Williams</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Groups -->
+        <div class="mb-6">
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">GROUPS</h3>
+            <ul class="space-y-2">
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </span>
+                    <span>Engineering</span>
+                </li>
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </span>
+                    <span>Marketing</span>
+                </li>
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </span>
+                    <span>Design</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Admin Options (Hidden for Users) -->
+        <div id="adminOptions" class="hidden">
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">ADMIN TOOLS</h3>
+            <ul class="space-y-2">
+                <li>
+                    <button id="userManagementBtn" class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors w-full text-left">
+                        <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                        </span>
+                        <span>User Management</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="groupManagementBtn" class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors w-full text-left">
+                        <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                        </span>
+                        <span>Group Management</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="permissionManagementBtn" class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors w-full text-left">
+                        <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.104-.896-2-2-2H6c-1.104 0-2 .896-2 2v6c0 1.104.896 2 2 2h4c1.104 0 2-.896 2-2v-6zm8-6c0-1.104-.896-2-2-2h-4c-1.104 0-2 .896-2 2v10c0 1.104.896 2 2 2h4c1.104 0 2-.896 2-2V5z"></path>
+                            </svg>
+                        </span>
+                        <span>Permission Management</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div id="chatAreaContainer" class="flex-1 flex flex-col h-screen bg-gray-100 text-gray-900">
+        <!-- Chat Header -->
+        <div class="bg-gray-200 p-4 flex items-center justify-between shadow-md">
+            <div class="flex items-center">
+                <a href="/profile" id="menuBtn" class="md:hidden p-2 text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </a>
+                <h2 class="text-lg font-semibold">Engineering Team</h2>
+                <span class="ml-2 text-sm text-gray-500">3 members online</span>
+            </div>
+            <!-- Notification Icon -->
+            <div class="relative">
+                <a href="/profile" class="p-2 text-gray-600 hover:text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                    <span id="notificationBadge" class="notification-badge">2</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="chatArea" class="flex-1 p-4 overflow-y-auto chat-area">
+            <div class="mb-4">
+                <p class="text-gray-600 text-sm">Alice Smith</p>
+                <div class="bg-gray-300 p-3 rounded-lg inline-block shadow-sm">
+                    Hey team, how’s the new feature coming along?
+                </div>
+                <p class="text-gray-500 text-xs mt-1">10:30 AM</p>
+            </div>
+            <div class="mb-4 text-right">
+                <p class="text-gray-600 text-sm">John Doe</p>
+                <div class="bg-indigo-600 p-3 rounded-lg inline-block text-white shadow-sm">
+                    Making good progress! Should be ready for review by EOD. 😊
+                </div>
+                <p class="text-gray-500 text-xs mt-1">10:32 AM</p>
+            </div>
+            <div class="mb-4">
+                <p class="text-gray-600 text-sm">Bob Johnson</p>
+                <div class="bg-gray-300 p-3 rounded-lg inline-block shadow-sm">
+                    Great to hear! Let me know if you need any help.
+                </div>
+                <p class="text-gray-500 text-xs mt-1">10:33 AM</p>
+            </div>
+            <div class="mb-4 text-right">
+                <p class="text-gray-600 text-sm">John Doe</p>
+                <div class="bg-indigo-600 p-3 rounded-lg inline-block shadow-sm">
+                    <img src="https://via.placeholder.com/150" alt="Image" class="w-32 h-32 object-cover rounded-lg">
+                </div>
+                <p class="text-gray-500 text-xs mt-1">10:34 AM</p>
+            </div>
+            <div class="mb-4">
+                <p class="text-gray-600 text-sm">Alice Smith</p>
+                <div class="bg-gray-300 p-3 rounded-lg inline-block shadow-sm">
+                    <video controls class="w-48 h-32 rounded-lg">
+                        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <p class="text-gray-500 text-xs mt-1">10:35 AM</p>
+            </div>
+        </div>
+
+        <!-- Message Input -->
+        <div class="bg-gray-200 p-4 flex items-center shadow-md">
+            <button id="voiceChatBtn" class="p-2 text-gray-600 hover:text-indigo-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM6 10a6 6 0 0012 0M6 10V8m12 2V8m-3 10a3 3 0 01-6 0H6a6 6 0 0012 0h-3z"></path>
+                </svg>
+            </button>
+            <button id="emojiBtn" class="p-2 text-gray-600 hover:text-indigo-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </button>
+            <button id="mediaBtn" class="p-2 text-gray-600 hover:text-indigo-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.586-6.586a4 4 0 00-5.656-5.656L5.757 10.757a6 6 0 108.486 8.486L21 12"></path>
+                </svg>
+            </button>
+            <input 
+                type="text" 
+                id="messageInput" 
+                class="flex-1 px-4 py-2 bg-gray-300 border border-gray-400 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                placeholder="Type your message..."
+            >
+            <button id="sendBtn" class="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-full ml-2">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modals for Admin Features -->
+    <!-- User Management Modal -->
+    <div id="userManagementModal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-lg font-semibold mb-4">User Management</h3>
+            <p class="text-gray-600 mb-4">Manage users here (e.g., add, edit, delete).</p>
+            <button id="closeUserModal" class="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Close</button>
+        </div>
+    </div>
+
+    <!-- Group Management Modal -->
+    <div id="groupManagementModal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-lg font-semibold mb-4">Group Management</h3>
+            <p class="text-gray-600 mb-4">Manage groups here (e.g., create, edit, delete, manage members).</p>
+            <button id="closeGroupModal" class="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Close</button>
+        </div>
+    </div>
+
+    <!-- Permission Management Modal -->
+    <div id="permissionManagementModal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-lg font-semibold mb-4">Permission Management</h3>
+            <p class="text-gray-600 mb-4">Manage permissions here (e.g., assign roles/permissions).</p>
+            <button id="closePermissionModal" class="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Close</button>
+        </div>
+    </div>
+
+    <!-- WebSocket and Chat Functionality -->
+    <script>
+        // Check User Role and Show Admin Options
+        const userRole = localStorage.getItem('userRole') || 'user'; // Default to 'user' if not set
+        const adminOptions = document.getElementById('adminOptions');
+        if (userRole === 'admin') {
+            adminOptions.classList.remove('hidden');
+        }
+
+        // Sidebar Toggle for Mobile
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+
+        menuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            sidebar.classList.toggle('open');
+        });
+
+        // Load saved profile photo from localStorage
+        const sidebarProfilePhoto = document.getElementById('sidebarProfilePhoto');
+        const savedPhoto = localStorage.getItem('profilePhoto');
+        if (savedPhoto) {
+            sidebarProfilePhoto.src = savedPhoto;
+        }
+
+        // Admin Modals
+        const userManagementBtn = document.getElementById('userManagementBtn');
+        const groupManagementBtn = document.getElementById('groupManagementBtn');
+        const permissionManagementBtn = document.getElementById('permissionManagementBtn');
+
+        const userManagementModal = document.getElementById('userManagementModal');
+        const groupManagementModal = document.getElementById('groupManagementModal');
+        const permissionManagementModal = document.getElementById('permissionManagementModal');
+
+        const closeUserModal = document.getElementById('closeUserModal');
+        const closeGroupModal = document.getElementById('closeGroupModal');
+        const closePermissionModal = document.getElementById('closePermissionModal');
+
+        userManagementBtn?.addEventListener('click', () => {
+            userManagementModal.style.display = 'block';
+        });
+
+        groupManagementBtn?.addEventListener('click', () => {
+            groupManagementModal.style.display = 'block';
+        });
+
+        permissionManagementBtn?.addEventListener('click', () => {
+            permissionManagementModal.style.display = 'block';
+        });
+
+        closeUserModal.addEventListener('click', () => {
+            userManagementModal.style.display = 'none';
+        });
+
+        closeGroupModal.addEventListener('click', () => {
+            groupManagementModal.style.display = 'none';
+        });
+
+        closePermissionModal.addEventListener('click', () => {
+            permissionManagementModal.style.display = 'none';
+        });
+
+        // WebSocket Setup (Replace 'ws://localhost:8080' with your WebSocket server URL)
+        const ws = new WebSocket('ws://localhost:8080');
+        const chatArea = document.getElementById('chatArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const emojiBtn = document.getElementById('emojiBtn');
+        const mediaBtn = document.getElementById('mediaBtn');
+        const voiceChatBtn = document.getElementById('voiceChatBtn');
+
+        ws.onopen = () => {
+            console.log('Connected to WebSocket server');
+        };
+
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            displayMessage(message);
+        };
+
+        ws.onclose = () => {
+            console.log('Disconnected from WebSocket server');
+        };
+
+        function displayMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('mb-4');
+            if (message.sender === 'John Doe') {
+                messageDiv.classList.add('text-right');
+            }
+
+            const sender = document.createElement('p');
+            sender.classList.add('text-gray-600', 'text-sm');
+            sender.textContent = message.sender;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.classList.add(message.sender === 'John Doe' ? 'bg-indigo-600' : 'bg-gray-300', message.sender === 'John Doe' ? 'text-white' : '', 'p-3', 'rounded-lg', 'inline-block', 'shadow-sm');
+
+            if (message.type === 'text') {
+                contentDiv.textContent = message.content;
+            } else if (message.type === 'image') {
+                const img = document.createElement('img');
+                img.src = message.content;
+                img.classList.add('w-32', 'h-32', 'object-cover', 'rounded-lg');
+                contentDiv.appendChild(img);
+            } else if (message.type === 'video') {
+                const video = document.createElement('video');
+                video.controls = true;
+                video.classList.add('w-48', 'h-32', 'rounded-lg');
+                const source = document.createElement('source');
+                source.src = message.content;
+                source.type = 'video/mp4';
+                video.appendChild(source);
+                contentDiv.appendChild(video);
+            }
+
+            const timestamp = document.createElement('p');
+            timestamp.classList.add('text-gray-500', 'text-xs', 'mt-1');
+            timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            messageDiv.appendChild(sender);
+            messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(timestamp);
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        sendBtn.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                const messageData = {
+                    sender: 'John Doe',
+                    type: 'text',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(messageData));
+                messageInput.value = '';
+            }
+        });
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+
+        emojiBtn.addEventListener('click', () => {
+            const emoji = '😊';
+            messageInput.value += emoji;
+        });
+
+        mediaBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*,video/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const messageData = {
+                            sender: 'John Doe',
+                            type: file.type.startsWith('image') ? 'image' : 'video',
+                            content: event.target.result,
+                            timestamp: new Date().toISOString()
+                        };
+                        ws.send(JSON.stringify(messageData));
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        });
+
+        voiceChatBtn.addEventListener('click', () => {
+            alert('Voice chat initiated! (Placeholder for WebRTC integration)');
+        });
+    </script>
+</body>
+</html>

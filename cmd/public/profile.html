@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectSphere - Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom background lines */
+        .background-lines {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            transform-origin: center;
+        }
+        .line-1 {
+            width: 200%;
+            height: 1px;
+            top: 20%;
+            left: -50%;
+            transform: rotate(45deg);
+            animation: moveLine1 10s linear infinite;
+        }
+        .line-2 {
+            width: 200%;
+            height: 1px;
+            bottom: 20%;
+            left: -50%;
+            transform: rotate(-45deg);
+            animation: moveLine2 12s linear infinite;
+        }
+        .line-3 {
+            width: 1px;
+            height: 200%;
+            left: 30%;
+            top: -50%;
+            transform: rotate(30deg);
+            animation: moveLine3 8s linear infinite;
+        }
+
+        /* Animations for lines */
+        @keyframes moveLine1 {
+            0% { transform: rotate(45deg) translateX(-100%); }
+            100% { transform: rotate(45deg) translateX(100%); }
+        }
+        @keyframes moveLine2 {
+            0% { transform: rotate(-45deg) translateX(100%); }
+            100% { transform: rotate(-45deg) translateX(-100%); }
+        }
+        @keyframes moveLine3 {
+            0% { transform: rotate(30deg) translateY(-100%); }
+            100% { transform: rotate(30deg) translateY(100%); }
+        }
+
+        /* Logo animation */
+        .logo-animation {
+            animation: rotateFlip 4s ease-in-out infinite;
+        }
+        @keyframes rotateFlip {
+            0% { transform: rotate(0deg) scaleX(1); }
+            25% { transform: rotate(90deg) scaleX(1); }
+            50% { transform: rotate(180deg) scaleX(-1); }
+            75% { transform: rotate(270deg) scaleX(-1); }
+            100% { transform: rotate(360deg) scaleX(1); }
+        }
+
+        /* Custom scrollbar */
+        .group-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        .group-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .group-area::-webkit-scrollbar-thumb {
+            background: #6b7280;
+            border-radius: 3px;
+        }
+        .group-area::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* Responsive sidebar toggle */
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 50;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .profile-area {
+                margin-left: 0 !important;
+            }
+        }
+
+        /* Notification badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 9999px;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex bg-gray-100">
+    <!-- Background Lines -->
+    <div class="background-lines">
+        <div class="line line-1"></div>
+        <div class="line line-2"></div>
+        <div class="line line-3"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar w-64 p-4 flex flex-col h-screen bg-gray-800 text-white shadow-lg">
+        <!-- Profile Section -->
+        <div class="flex items-center mb-6">
+            <a href="/users/dashboard" class="flex items-center">
+                <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center mr-3 logo-animation">
+                    <img id="sidebarProfilePhoto" src="https://via.placeholder.com/48" alt="Profile Photo" class="w-full h-full rounded-full object-cover">
+                </div>
+                <div>
+                    <h2 id="sidebarName" class="text-lg font-semibold">John Doe</h2>
+                    <p id="sidebarDesignation" class="text-sm text-gray-400">Software Engineer</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Online Users -->
+        <div class="mb-6">
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">ONLINE USERS</h3>
+            <ul id="onlineUsersList" class="space-y-2">
+                <!-- Dynamically populated -->
+            </ul>
+        </div>
+
+        <!-- Groups -->
+        <div>
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">GROUPS</h3>
+            <ul id="sidebarGroupsList" class="space-y-2">
+                <!-- Dynamically populated -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Profile Area -->
+    <div id="profileArea" class="profile-area flex-1 flex flex-col h-screen bg-gray-100 text-gray-900">
+        <!-- Profile Header -->
+        <div class="bg-gray-200 p-4 flex items-center justify-between shadow-md">
+            <div class="flex items-center">
+                <a href="/users/dashboard" id="menuBtn" class="md:hidden p-2 text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </a>
+                <h2 class="text-lg font-semibold">Profile</h2>
+            </div>
+            <!-- Notification Icon -->
+            <div class="relative">
+                <button id="notificationBtn" class="p-2 text-gray-600 hover:text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                    <span id="notificationBadge" class="notification-badge">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Profile Content -->
+        <div class="flex-1 p-4 overflow-y-auto group-area">
+            <!-- Profile Photo and Details -->
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <div class="flex items-center mb-4">
+                    <div class="relative">
+                        <img id="profilePhoto" src="https://via.placeholder.com/96" alt="Profile Photo" class="w-24 h-24 rounded-full object-cover">
+                        <button id="changePhotoBtn" class="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="ml-6">
+                        <h3 id="profileName" class="text-xl font-semibold">John Doe</h3>
+                        <p id="profileEmail" class="text-gray-600">Email: john.doe@example.com</p>
+                        <p id="profileEmployeeId" class="text-gray-600">Employee ID: EMP12345</p>
+                        <p id="profileDesignation" class="text-gray-600">Designation: Software Engineer</p>
+                        <p id="profileStatus" class="text-gray-600">Status: Offline</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Groups Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-lg font-semibold mb-4">My Groups</h3>
+                <ul id="myGroupsList" class="space-y-4">
+                    <!-- Dynamically populated -->
+                </ul>
+            </div>
+
+            <!-- Group Join Requests Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-lg font-semibold mb-4">Group Join Requests</h3>
+                <ul id="groupRequestsList" class="space-y-4">
+                    <!-- Dynamically populated -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Profile Photo, Group Requests, and Notifications -->
+    <script>
+        // Sidebar Toggle for Mobile
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+
+        menuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            sidebar.classList.toggle('open');
+        });
+
+        // Profile Photo Change
+        const changePhotoBtn = document.getElementById('changePhotoBtn');
+        const profilePhoto = document.getElementById('profilePhoto');
+        const sidebarProfilePhoto = document.getElementById('sidebarProfilePhoto');
+
+        // Load saved profile photo from localStorage
+        const savedPhoto = localStorage.getItem('profilePhoto');
+        if (savedPhoto) {
+            profilePhoto.src = savedPhoto;
+            sidebarProfilePhoto.src = savedPhoto;
+        }
+
+        changePhotoBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const photoUrl = event.target.result;
+                        profilePhoto.src = photoUrl;
+                        sidebarProfilePhoto.src = photoUrl;
+                        localStorage.setItem('profilePhoto', photoUrl); // Save to localStorage
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        });
+
+        // Fetch Profile Data
+
+       
+        async function fetchProfile() {
+            const token = localStorage.getItem('token');
+            console.log('Retrieved Token:', token);
+            if (!token) {
+                alert('Please log in to view your profile');
+                window.location.href = '/users/login';
+                return;
+            }
+           
+
+            try {
+                const res = await fetch('http://localhost:8080/users/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    // Update profile details
+                    document.getElementById('profileName').textContent = data.name;
+                    document.getElementById('profileEmail').textContent = `Email: ${data.email}`;
+                    document.getElementById('profileEmployeeId').textContent = `Employee ID: ${data.employee_id}`;
+                    document.getElementById('profileDesignation').textContent = `Designation: ${data.designation || 'N/A'}`; // Assuming designation is available
+                    document.getElementById('profileStatus').textContent = `Status: ${data.status}`;
+
+                    // Update sidebar
+                    document.getElementById('sidebarName').textContent = data.name;
+                    document.getElementById('sidebarDesignation').textContent = data.designation || 'N/A';
+                } else {
+                    alert('Failed to fetch profile: ' + (data.error || 'Unknown error'));
+                    window.location.href = '/users/login';
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+                window.location.href = '/users/login';
+            }
+        }
+
+        // Fetch Online Users (Placeholder - Replace with actual API call)
+        async function fetchOnlineUsers() {
+            const onlineUsersList = document.getElementById('onlineUsersList');
+            onlineUsersList.innerHTML = ''; // Clear existing list
+
+            // Placeholder data - Replace with API call
+            const users = [
+                { name: 'Alice Smith', status: 'online' },
+                { name: 'Bob Johnson', status: 'online' },
+                { name: 'Carol Williams', status: 'online' }
+            ];
+
+            users.forEach(user => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
+                li.innerHTML = `
+                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    <span>${user.name}</span>
+                `;
+                onlineUsersList.appendChild(li);
+            });
+        }
+
+        // Fetch User Groups
+        async function fetchUserGroups() {
+            const token = localStorage.getItem('token');
+            const sidebarGroupsList = document.getElementById('sidebarGroupsList');
+            const myGroupsList = document.getElementById('myGroupsList');
+            sidebarGroupsList.innerHTML = '';
+            myGroupsList.innerHTML = '';
+
+            try {
+                const res = await fetch('http://localhost:8080/users/user-groups', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    data.groups.forEach(group => {
+                        // Sidebar Groups
+                        const sidebarLi = document.createElement('li');
+                        sidebarLi.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
+                        sidebarLi.innerHTML = `
+                            <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                            </span>
+                            <span>${group.name}</span>
+                        `;
+                        sidebarGroupsList.appendChild(sidebarLi);
+
+                        // Profile Groups
+                        const profileLi = document.createElement('li');
+                        profileLi.className = 'flex items-center p-2 rounded-lg hover:bg-gray-100 transition-colors';
+                        profileLi.innerHTML = `
+                            <span class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                            </span>
+                            <span class="text-gray-900">${group.name}</span>
+                        `;
+                        myGroupsList.appendChild(profileLi);
+                    });
+                } else {
+                    console.error('Failed to fetch groups:', data.error);
+                }
+            } catch (err) {
+                console.error('Error fetching groups:', err.message);
+            }
+        }
+
+        // Fetch Group Join Requests
+        async function fetchGroupJoinRequests() {
+            const token = localStorage.getItem('token');
+            const groupRequestsList = document.getElementById('groupRequestsList');
+            groupRequestsList.innerHTML = '';
+
+            try {
+                const res = await fetch('http://localhost:8080/groups/join', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    data.requests.forEach(request => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors';
+                        li.innerHTML = `
+                            <div class="flex items-center">
+                                <span class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                    </svg>
+                                </span>
+                                <span class="text-gray-900">${request.group_name}</span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="accept-btn p-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-request-id="${request.id}">
+                                    Accept
+                                </button>
+                                <button class="decline-btn p-2 bg-red-500 text-white rounded-lg hover:bg-red-600" data-request-id="${request.id}">
+                                    Decline
+                                </button>
+                            </div>
+                        `;
+                        groupRequestsList.appendChild(li);
+                    });
+
+                    // Update notification badge
+                    updateNotificationBadge();
+
+                    // Add event listeners for accept/decline buttons
+                    addGroupRequestEventListeners();
+                } else {
+                    console.error('Failed to fetch group requests:', data.error);
+                }
+            } catch (err) {
+                console.error('Error fetching group requests:', err.message);
+            }
+        }
+
+        // Update notification badge based on number of requests
+        const notificationBadge = document.getElementById('notificationBadge');
+        function updateNotificationBadge() {
+            const groupRequestsList = document.getElementById('groupRequestsList');
+            const requestCount = groupRequestsList.children.length;
+            notificationBadge.textContent = requestCount;
+            if (requestCount === 0) {
+                notificationBadge.style.display = 'none';
+            } else {
+                notificationBadge.style.display = 'block';
+            }
+        }
+
+        // Handle Accept/Decline Group Join Requests
+        function addGroupRequestEventListeners() {
+            const acceptButtons = document.querySelectorAll('.accept-btn');
+            const declineButtons = document.querySelectorAll('.decline-btn');
+            const token = localStorage.getItem('token');
+
+            acceptButtons.forEach(button => {
+                button.addEventListener('click', async () => {
+                    const requestId = button.getAttribute('data-request-id');
+                    try {
+                        const res = await fetch('http://localhost:8080//accept-group-request', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ request_id: requestId })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            const listItem = button.closest('li');
+                            listItem.remove();
+                            alert('Group join request accepted!');
+                            updateNotificationBadge();
+                            fetchUserGroups(); // Refresh groups
+                        } else {
+                            alert('Failed to accept request: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (err) {
+                        alert('Error: ' + err.message);
+                    }
+                });
+            });
+
+            declineButtons.forEach(button => {
+                button.addEventListener('click', async () => {
+                    const requestId = button.getAttribute('data-request-id');
+                    try {
+                        const res = await fetch('http://localhost:8080/users/decline-group-request', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ request_id: requestId })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            const listItem = button.closest('li');
+                            listItem.remove();
+                            alert('Group join request declined.');
+                            updateNotificationBadge();
+                        } else {
+                            alert('Failed to decline request: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (err) {
+                        alert('Error: ' + err.message);
+                    }
+                });
+            });
+        }
+
+        // Fetch all data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchProfile();
+            fetchOnlineUsers();
+            fetchUserGroups();
+            fetchGroupJoinRequests();
+        });
+    </script>
+</body>
+</html>

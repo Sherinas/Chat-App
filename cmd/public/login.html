@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectSphere - Internal Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom background lines */
+        .background-lines {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            transform-origin: center;
+        }
+        .line-1 {
+            width: 200%;
+            height: 2px;
+            top: 20%;
+            left: -50%;
+            transform: rotate(45deg);
+            animation: moveLine1 10s linear infinite;
+        }
+        .line-2 {
+            width: 200%;
+            height: 2px;
+            bottom: 20%;
+            left: -50%;
+            transform: rotate(-45deg);
+            animation: moveLine2 12s linear infinite;
+        }
+        .line-3 {
+            width: 2px;
+            height: 200%;
+            left: 30%;
+            top: -50%;
+            transform: rotate(30deg);
+            animation: moveLine3 8s linear infinite;
+        }
+
+        /* Animations for lines */
+        @keyframes moveLine1 {
+            0% { transform: rotate(45deg) translateX(-100%); }
+            100% { transform: rotate(45deg) translateX(100%); }
+        }
+        @keyframes moveLine2 {
+            0% { transform: rotate(-45deg) translateX(100%); }
+            100% { transform: rotate(-45deg) translateX(-100%); }
+        }
+        @keyframes moveLine3 {
+            0% { transform: rotate(30deg) translateY(-100%); }
+            100% { transform: rotate(30deg) translateY(100%); }
+        }
+
+        /* Logo animation */
+        .logo-animation {
+            animation: rotateFlip 4s ease-in-out infinite;
+        }
+        @keyframes rotateFlip {
+            0% { transform: rotate(0deg) scaleX(1); }
+            25% { transform: rotate(90deg) scaleX(1); }
+            50% { transform: rotate(180deg) scaleX(-1); }
+            75% { transform: rotate(270deg) scaleX(-1); }
+            100% { transform: rotate(360deg) scaleX(1); }
+        }
+
+        /* Scale down the login container */
+        .scaled-container {
+            transform: scale(0.8);
+            transform-origin: center;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 min-h-screen flex items-center justify-center">
+    <!-- Background Lines -->
+    <div class="background-lines">
+        <div class="line line-1"></div>
+        <div class="line line-2"></div>
+        <div class="line line-3"></div>
+    </div>
+
+    <!-- Login Container (Reduced Height) -->
+    <div class="relative z-10 bg-white/30 rounded-2xl p-6 shadow-2xl w-full max-w-md border border-white/40 scaled-container">
+        <!-- Logo and Company Name -->
+        <div class="flex flex-col items-center mb-6">
+            <div class="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mb-4 logo-animation">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold text-white">ConnectSphere</h1>
+            <p class="text-white/90 text-base mt-1">Internal Chat System</p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="space-y-4">
+            <!-- Employee ID Field -->
+            <div>
+                <label for="employeeId" class="block text-base font-medium text-white mb-2">Employee ID</label>
+                <input 
+                    type="text" 
+                    id="employeeId" 
+                    class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                    placeholder="Enter your Employee ID" 
+                    required
+                >
+            </div>
+
+            <!-- Password Field -->
+            <div>
+                <label for="password" class="block text-base font-medium text-white mb-2">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                    placeholder="Enter your password" 
+                    required
+                >
+            </div>
+
+            <!-- Forgot Password Link -->
+            <div class="text-right">
+                <a href="/users/resetPassword" class="text-base text-indigo-100 hover:text-indigo-50 transition-colors">Forgot Password?</a>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-semibold rounded-lg transition-colors duration-200 shadow-lg"
+            >
+                Log In
+            </button>
+        </form>
+
+        <!-- Register Link -->
+        <div class="mt-4 text-center">
+            <p class="text-white/90 text-base">Don't have an account? 
+                <a href="/users/signup" class="text-indigo-100 hover:text-indigo-50 transition-colors font-semibold">Register</a>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-white/80 text-sm mt-4">
+            © 2025 ConnectSphere. All rights reserved.
+        </p>
+    </div>
+    <script src="/static/vs/auth.js"></script>
+</body>
+</html>

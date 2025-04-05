@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectSphere - Register</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom background lines */
+        .background-lines {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            transform-origin: center;
+        }
+        .line-1 {
+            width: 200%;
+            height: 2px;
+            top: 20%;
+            left: -50%;
+            transform: rotate(45deg);
+            animation: moveLine1 10s linear infinite;
+        }
+        .line-2 {
+            width: 200%;
+            height: 2px;
+            bottom: 20%;
+            left: -50%;
+            transform: rotate(-45deg);
+            animation: moveLine2 12s linear infinite;
+        }
+        .line-3 {
+            width: 2px;
+            height: 200%;
+            left: 30%;
+            top: -50%;
+            transform: rotate(30deg);
+            animation: moveLine3 8s linear infinite;
+        }
+
+        /* Animations for lines */
+        @keyframes moveLine1 {
+            0% { transform: rotate(45deg) translateX(-100%); }
+            100% { transform: rotate(45deg) translateX(100%); }
+        }
+        @keyframes moveLine2 {
+            0% { transform: rotate(-45deg) translateX(100%); }
+            100% { transform: rotate(-45deg) translateX(-100%); }
+        }
+        @keyframes moveLine3 {
+            0% { transform: rotate(30deg) translateY(-100%); }
+            100% { transform: rotate(30deg) translateY(100%); }
+        }
+
+        /* Logo animation */
+        .logo-animation {
+            animation: rotateFlip 4s ease-in-out infinite;
+        }
+        @keyframes rotateFlip {
+            0% { transform: rotate(0deg) scaleX(1); }
+            25% { transform: rotate(90deg) scaleX(1); }
+            50% { transform: rotate(180deg) scaleX(-1); }
+            75% { transform: rotate(270deg) scaleX(-1); }
+            100% { transform: rotate(360deg) scaleX(1); }
+        }
+
+        /* Scale down the register container */
+        .scaled-container {
+            transform: scale(0.8);
+            transform-origin: center;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 min-h-screen flex items-center justify-center">
+    <!-- Background Lines -->
+    <div class="background-lines">
+        <div class="line line-1"></div>
+        <div class="line line-2"></div>
+        <div class="line line-3"></div>
+    </div>
+
+    <!-- Register Container (Horizontal Layout) -->
+    <div class="relative z-10 bg-white/30 rounded-2xl p-6 shadow-2xl w-full max-w-3xl border border-white/40 scaled-container">
+        <!-- Logo and Company Name -->
+        <div class="flex flex-col items-center mb-6">
+            <div class="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mb-4 logo-animation">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold text-white">ConnectSphere</h1>
+            <p class="text-white/90 text-base mt-1">Create Your Account</p>
+        </div>
+
+        <!-- Register Form (Horizontal) -->
+        <form id="register-form" class="grid grid-cols-2 gap-4">
+            <!-- Left Column -->
+            <div class="space-y-4">
+                <!-- Email Field -->
+                <div>
+                    <label for="email" class="block text-base font-medium text-white mb-2">Email</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email"
+                        class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                        placeholder="Enter your email" 
+                        required
+                    >
+                </div>
+
+                <!-- Employee ID Field -->
+                <div>
+                    <label for="employeeId" class="block text-base font-medium text-white mb-2">Employee ID</label>
+                    <input 
+                        type="text" 
+                        id="employeeId" 
+                        name="employeeId"
+                        class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                        placeholder="Enter your Employee ID" 
+                        required
+                    >
+                </div>
+
+                <!-- Mobile Number Field -->
+                <div>
+                    <label for="mobile" class="block text-base font-medium text-white mb-2">Mobile Number</label>
+                    <input 
+                        type="tel" 
+                        id="mobile" 
+                        name="mobile"
+                        class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                        placeholder="Enter your mobile number" 
+                        required
+                    >
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-4">
+                <!-- Password Field -->
+                <div>
+                    <label for="password" class="block text-base font-medium text-white mb-2">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password"
+                        class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                        placeholder="Enter your password" 
+                        required
+                    >
+                </div>
+
+                <!-- Confirm Password Field -->
+                <div>
+                    <label for="confirmPassword" class="block text-base font-medium text-white mb-2">Confirm Password</label>
+                    <input 
+                        type="password" 
+                        id="confirmPassword" 
+                        name="confirmPassword"
+                        class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                        placeholder="Confirm your password" 
+                        required
+                    >
+                </div>
+
+                <!-- Current Designation Field -->
+                <div>
+                    <label for="designation" class="block text-base font-medium text-white mb-2">Current Designation</label>
+                    <input 
+                        type="text" 
+                        id="designation" 
+                        name="designation"
+                        class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                        placeholder="Enter your designation" 
+                        required
+                    >
+                </div>
+            </div>
+
+            <!-- Submit Button (Full Width) -->
+            <button 
+                type="submit" 
+                class="col-span-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-semibold rounded-lg transition-colors duration-200 shadow-lg mt-4"
+            >
+                Register
+            </button>
+        </form>
+
+        <!-- Login Link -->
+        <div class="mt-4 text-center">
+            <p class="text-white/90 text-base">Already have an account? 
+                <a href="/users/login.html" class="text-indigo-100 hover:text-indigo-50 transition-colors font-semibold">Log In</a>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-white/80 text-sm mt-4">
+            © 2025 ConnectSphere. All rights reserved.
+        </p>
+    </div>
+    <script src="/static/vs/auth.js"></script>
+</body>
+</html>

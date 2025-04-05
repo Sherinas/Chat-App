@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectSphere - OTP Verification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom background lines */
+        .background-lines {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            transform-origin: center;
+        }
+        .line-1 {
+            width: 200%;
+            height: 2px;
+            top: 20%;
+            left: -50%;
+            transform: rotate(45deg);
+            animation: moveLine1 10s linear infinite;
+        }
+        .line-2 {
+            width: 200%;
+            height: 2px;
+            bottom: 20%;
+            left: -50%;
+            transform: rotate(-45deg);
+            animation: moveLine2 12s linear infinite;
+        }
+        .line-3 {
+            width: 2px;
+            height: 200%;
+            left: 30%;
+            top: -50%;
+            transform: rotate(30deg);
+            animation: moveLine3 8s linear infinite;
+        }
+
+        /* Logo animation */
+        .logo-animation {
+            animation: rotateFlip 4s ease-in-out infinite;
+        }
+
+        /* Scale down the container */
+        .scaled-container {
+            transform: scale(0.8);
+            transform-origin: center;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 min-h-screen flex items-center justify-center">
+    <!-- Background Lines -->
+    <div class="background-lines">
+        <div class="line line-1"></div>
+        <div class="line line-2"></div>
+        <div class="line line-3"></div>
+    </div>
+
+    <!-- OTP Container -->
+    <div class="relative z-10 bg-white/30 rounded-2xl p-6 shadow-2xl w-full max-w-md border border-white/40 scaled-container">
+        <!-- Logo and Company Name -->
+        <div class="flex flex-col items-center mb-6">
+            <div class="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mb-4 logo-animation">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold text-white">ConnectSphere</h1>
+            <p class="text-white/90 text-base mt-1">Verify Your OTP</p>
+        </div>
+
+        <!-- OTP Form -->
+        <form id="otp-form" class="space-y-6">
+            <!-- Hidden Employee ID Field -->
+            <input type="hidden" id="employeeId">
+
+            <!-- OTP Field -->
+            <div>
+                <label for="otp" class="block text-base font-medium text-white mb-2">Enter OTP</label>
+                <input 
+                    type="text" 
+                    id="otp" 
+                    class="w-full px-4 py-3 bg-white/20 border border-white/40 rounded-lg text-white text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                    placeholder="Enter the OTP" 
+                    required
+                >
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-semibold rounded-lg transition-colors duration-200 shadow-lg"
+            >
+                Submit
+            </button>
+        </form>
+
+        <!-- Resend OTP with Timer -->
+        <div class="mt-4 text-center">
+            <p class="text-white/90 text-base">
+                Didn’t receive the OTP? 
+                <a href="#" id="resendLink" class="text-indigo-100 hover:text-indigo-50 transition-colors font-semibold cursor-not-allowed opacity-50">Resend OTP</a>
+            </p>
+            <p class="text-white/80 text-sm mt-2">Resend available in <span id="timer">30</span> seconds</p>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-white/80 text-sm mt-6">
+            © 2025 ConnectSphere. All rights reserved.
+        </p>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        const otpForm = document.getElementById("otp-form");
+        const employeeIdInput = document.getElementById("employeeId");
+        const otpInput = document.getElementById("otp");
+        const timerElement = document.getElementById("timer");
+        const resendLink = document.getElementById("resendLink");
+
+        let timeLeft = 30;
+        let timerInterval = setInterval(updateTimer, 1000);
+
+        // Pre-fill employee ID if available
+        const storedEmployeeId = localStorage.getItem("signupEmployeeId");
+        if (storedEmployeeId) {
+            employeeIdInput.value = storedEmployeeId;
+        }
+
+        otpForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const employeeId = employeeIdInput.value;
+            const otp = otpInput.value;
+
+            try {
+                const res = await fetch("http://localhost:8080/users/verify-otp", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ employee_id: employeeId, otp })
+                });
+
+                const data = await res.json();
+                alert(data.message || "OTP verification failed");
+
+                if (data.token) {
+                    localStorage.setItem("token", data.token);
+                    window.location.href = "/users/dashboard";
+                } else {
+                    window.location.href = "/otp/login.html";
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        };
+
+        function updateTimer() {
+            timerElement.textContent = timeLeft;
+            if (timeLeft > 0) {
+                timeLeft--;
+            } else {
+                clearInterval(timerInterval);
+                resendLink.classList.remove("cursor-not-allowed", "opacity-50");
+            }
+        }
+
+        resendLink.onclick = function (e) {
+            e.preventDefault();
+            if (timeLeft === 0) {
+                alert("OTP resent!");
+                timeLeft = 30;
+                resendLink.classList.add("cursor-not-allowed", "opacity-50");
+                clearInterval(timerInterval);
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+        };
+    </script>
+</body>
+</html>

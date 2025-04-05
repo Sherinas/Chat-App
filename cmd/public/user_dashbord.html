@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectSphere - Chat Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom background lines */
+        .background-lines {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            transform-origin: center;
+        }
+        .line-1 { width: 200%; height: 1px; top: 20%; left: -50%; transform: rotate(45deg); animation: moveLine1 10s linear infinite; }
+        .line-2 { width: 200%; height: 1px; bottom: 20%; left: -50%; transform: rotate(-45deg); animation: moveLine2 12s linear infinite; }
+        .line-3 { width: 1px; height: 200%; left: 30%; top: -50%; transform: rotate(30deg); animation: moveLine3 8s linear infinite; }
+
+        @keyframes moveLine1 { 0% { transform: rotate(45deg) translateX(-100%); } 100% { transform: rotate(45deg) translateX(100%); } }
+        @keyframes moveLine2 { 0% { transform: rotate(-45deg) translateX(100%); } 100% { transform: rotate(-45deg) translateX(-100%); } }
+        @keyframes moveLine3 { 0% { transform: rotate(30deg) translateY(-100%); } 100% { transform: rotate(30deg) translateY(100%); } }
+
+        .logo-animation { animation: rotateFlip 4s ease-in-out infinite; }
+        @keyframes rotateFlip {
+            0% { transform: rotate(0deg) scaleX(1); } 25% { transform: rotate(90deg) scaleX(1); }
+            50% { transform: rotate(180deg) scaleX(-1); } 75% { transform: rotate(270deg) scaleX(-1); }
+            100% { transform: rotate(360deg) scaleX(1); }
+        }
+
+        .chat-area::-webkit-scrollbar { width: 6px; }
+        .chat-area::-webkit-scrollbar-track { background: transparent; }
+        .chat-area::-webkit-scrollbar-thumb { background: #6b7280; border-radius: 3px; }
+        .chat-area::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        .sidebar { transition: transform 0.3s ease-in-out; }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); position: fixed; z-index: 50; }
+            .sidebar.open { transform: translateX(0); }
+            .chat-area { margin-left: 0 !important; }
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 9999px;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex bg-gray-100">
+    <!-- Background Lines -->
+    <div class="background-lines">
+        <div class="line line-1"></div>
+        <div class="line line-2"></div>
+        <div class="line line-3"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar w-64 p-4 flex flex-col h-screen bg-gray-800 text-white shadow-lg z-10">
+        <div class="flex items-center mb-6">
+            <a href="/users/profile" class="flex items-center">
+                <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center mr-3 logo-animation">
+                    <img id="sidebarProfilePhoto" src="https://via.placeholder.com/48" alt="Profile Photo" class="w-full h-full rounded-full object-cover">
+                </div>
+                <div>
+                    <h2 id="sidebarName" class="text-lg font-semibold">John Doe</h2>
+                    <p id="sidebarDesignation" class="text-sm text-gray-400">Software Engineer</p>
+                </div>
+            </a>
+        </div>
+        <button id="logout-button" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mb-6">
+            Logout
+        </button>
+        <div class="mb-6">
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">ONLINE USERS</h3>
+            <ul id="onlineUsersList" class="space-y-2">
+                <!-- Online users will be populated here -->
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    <span>Alice Smith</span>
+                </li>
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    <span>Bob Johnson</span>
+                </li>
+            </ul>
+        </div>
+        <div>
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">GROUPS</h3>
+            <ul id="userGroupsList" class="space-y-2">
+                <!-- Groups will be populated here -->
+                <li class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </span>
+                    <span>Engineering Team</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div id="chatAreaContainer" class="flex-1 flex flex-col h-screen bg-gray-100 text-gray-900 relative z-0">
+        <div class="bg-gray-200 p-4 flex items-center justify-between shadow-md">
+            <div class="flex items-center">
+                <button id="menuBtn" class="md:hidden p-2 text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                <h2 class="text-lg font-semibold">Engineering Team</h2>
+                <span class="ml-2 text-sm text-gray-500">3 members online</span>
+            </div>
+            <div class="relative">
+                <button class="p-2 text-gray-600 hover:text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                    <span id="notificationBadge" class="notification-badge">2</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="chatArea" class="flex-1 p-4 overflow-y-auto chat-area">
+            <div class="mb-4">
+                <p class="text-gray-600 text-sm">Alice Smith</p>
+                <div class="bg-gray-300 p-3 rounded-lg inline-block shadow-sm">
+                    Hey team, how's the new feature coming along?
+                </div>
+                <p class="text-gray-500 text-xs mt-1">10:30 AM</p>
+            </div>
+            <div class="mb-4 text-right">
+                <p class="text-gray-600 text-sm">John Doe</p>
+                <div class="bg-indigo-600 p-3 rounded-lg inline-block text-white shadow-sm">
+                    Making good progress! Should be ready for review by EOD. 😊
+                </div>
+                <p class="text-gray-500 text-xs mt-1">10:32 AM</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-200 p-4 flex items-center shadow-md">
+            <button id="voiceChatBtn" class="p-2 text-gray-600 hover:text-indigo-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM6 10a6 6 0 0012 0M6 10V8m12 2V8m-3 10a3 3 0 01-6 0H6a6 6 0 0012 0h-3z"></path>
+                </svg>
+            </button>
+            <button id="emojiBtn" class="p-2 text-gray-600 hover:text-indigo-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </button>
+            <button id="mediaBtn" class="p-2 text-gray-600 hover:text-indigo-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.586-6.586a4 4 0 00-5.656-5.656L5.757 10.757a6 6 0 108.486 8.486L21 12"></path>
+                </svg>
+            </button>
+            <input 
+                type="text" 
+                id="messageInput" 
+                class="flex-1 px-4 py-2 bg-gray-300 border border-gray-400 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                placeholder="Type your message..."
+            >
+            <button id="sendBtn" class="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-full ml-2">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- WebSocket and Chat Functionality -->
+    <script>
+        // Mock data for development when server is not available
+        const mockUsers = [
+            { id: 1, name: "Alice Smith", online: true },
+            { id: 2, name: "Bob Johnson", online: true },
+            { id: 3, name: "Carol Williams", online: false }
+        ];
+        
+        const mockGroups = [
+            { id: 1, name: "Engineering Team", members: 5 },
+            { id: 2, name: "Marketing Team", members: 3 }
+        ];
+
+        // DOM Elements
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const chatArea = document.getElementById('chatArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const emojiBtn = document.getElementById('emojiBtn');
+        const mediaBtn = document.getElementById('mediaBtn');
+        const voiceChatBtn = document.getElementById('voiceChatBtn');
+        const sidebarName = document.getElementById('sidebarName');
+        const sidebarDesignation = document.getElementById('sidebarDesignation');
+        const onlineUsersList = document.getElementById('onlineUsersList');
+        const userGroupsList = document.getElementById('userGroupsList');
+        const logoutButton = document.getElementById('logout-button');
+        const sidebarProfilePhoto = document.getElementById('sidebarProfilePhoto');
+
+        // Sidebar Toggle for Mobile
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        // Load saved profile photo from localStorage with fallback
+        const savedPhoto = localStorage.getItem('profilePhoto');
+        if (savedPhoto) {
+            sidebarProfilePhoto.src = savedPhoto;
+            sidebarProfilePhoto.onerror = () => { 
+                sidebarProfilePhoto.src = 'https://via.placeholder.com/48'; 
+            };
+        }
+
+        // WebSocket Setup with Token
+        let ws;
+        
+        function connectWebSocket() {
+            const token = localStorage.getItem('token');
+            
+            // For development - if no token, use mock data instead of redirecting
+            if (!token) {
+                console.log("No token found. Using mock data for development.");
+                loadMockData();
+                return;
+            }
+
+            try {
+                ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
+                
+                ws.onopen = () => {
+                    console.log('Connected to WebSocket server');
+                    fetchUserDetails();
+                    fetchOnlineUsers();
+                    fetchUserGroups();
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        displayMessage(message);
+                    } catch (err) {
+                        console.error('Error parsing WebSocket message:', err);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    console.error("WebSocket error:", error);
+                    loadMockData(); // Fallback to mock data on error
+                };
+                
+                ws.onclose = () => {
+                    console.log("WebSocket closed, reconnecting...");
+                    setTimeout(connectWebSocket, 3000); // Longer timeout
+                };
+            } catch (error) {
+                console.error("Failed to create WebSocket:", error);
+                loadMockData(); // Fallback to mock data on error
+            }
+        }
+
+        function loadMockData() {
+            // Load user details
+            const savedName = localStorage.getItem('sidebarName') || 'John Doe';
+            const savedDesignation = localStorage.getItem('sidebarDesignation') || 'Software Engineer';
+            sidebarName.textContent = savedName;
+            sidebarDesignation.textContent = savedDesignation;
+            
+            // Populate online users
+            displayOnlineUsers(mockUsers);
+            
+            // Populate user groups
+            displayUserGroups(mockGroups);
+        }
+
+//     function displayMessage(message) {
+//     // Filter by active chat
+//              if (message.targetType === activeChat.type && message.targetId === activeChat.id) {
+//                 const messageDiv = document.createElement('div');
+//                 messageDiv.classList.add('mb-4');
+        
+//             if (message.sender === sidebarName.textContent) {
+//                   messageDiv.classList.add('text-right');
+//                 }
+
+//             const sender = document.createElement('p');
+//             sender.classList.add('text-gray-600', 'text-sm');
+//             sender.textContent = message.sender || 'Unknown';
+
+//            const contentDiv = document.createElement('div');
+//            contentDiv.classList.add(
+//            message.sender === sidebarName.textContent ? 'bg-indigo-600' : 'bg-gray-300',
+//            message.sender === sidebarName.textContent ? 'text-white' : '',
+//             'p-3', 'rounded-lg', 'inline-block', 'shadow-sm'
+//         );
+  
+//         displayMessage(testMessage);
+//         if (message.type === 'text') {
+//             contentDiv.textContent = message.content || '[Empty Message]';
+//             // Only add image if content is an image URL (optional logic)
+//             if (message.content.match(/\.(jpeg|jpg|png|gif)$/)) {
+//                 const img = document.createElement('img');
+//                 img.src = message.content;
+//                 img.onerror = () => { img.src = 'https://via.placeholder.com/150'; };
+//                 img.classList.add('w-32', 'h-32', 'object-cover', 'rounded-lg');
+//                 contentDiv.appendChild(img);
+//             }
+//         } else if (message.type === 'video') {
+//             const video = document.createElement('video');
+//             video.controls = true;
+//             video.classList.add('w-48', 'h-32', 'rounded-lg');
+//             const source = document.createElement('source');
+//             source.src = message.content;
+//             source.type = 'video/mp4';
+//             source.onerror = () => { contentDiv.textContent = 'Video failed to load'; };
+//             video.appendChild(source);
+//             contentDiv.appendChild(video);
+//         }
+
+//         const timestamp = document.createElement('p');
+//         timestamp.classList.add('text-gray-500', 'text-xs', 'mt-1');
+//         timestamp.textContent = new Date(message.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+//         messageDiv.appendChild(sender);
+//         messageDiv.appendChild(contentDiv);
+//         messageDiv.appendChild(timestamp);
+//         chatArea.appendChild(messageDiv);
+//         chatArea.scrollTop = chatArea.scrollHeight;
+//     } else {
+//         console.log('Message ignored, not for active chat:', message);
+//     }
+// }
+
+function displayMessage(message) {
+    console.log('Attempting to display:', message, 'Active chat:', activeChat);
+    let targetType, targetId;
+    if (message.type === 'personal_message' || message.receiver_id) {
+        targetType = 'user';
+        targetId = message.receiver_id;
+    } else if (message.type === 'group_message' || message.group_id) {
+        targetType = 'group';
+        targetId = message.group_id;
+    }
+    if (targetType === activeChat.type && String(targetId) === String(activeChat.id)) {
+        console.log('Message matches active chat, displaying');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('mb-4');
+        if (message.sender === sidebarName.textContent) {
+            messageDiv.classList.add('text-right');
+        }
+        const sender = document.createElement('p');
+        sender.classList.add('text-gray-600', 'text-sm');
+        sender.textContent = message.sender || 'Unknown';
+        const contentDiv = document.createElement('div');
+        contentDiv.classList.add(
+            message.sender === sidebarName.textContent ? 'bg-indigo-600' : 'bg-gray-300',
+            message.sender === sidebarName.textContent ? 'text-white' : '',
+            'p-3', 'rounded-lg', 'inline-block', 'shadow-sm'
+        );
+        contentDiv.textContent = message.content || '[Empty Message]';
+        const timestamp = document.createElement('p');
+        timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        messageDiv.appendChild(sender);
+        messageDiv.appendChild(contentDiv);
+        messageDiv.appendChild(timestamp);
+        chatArea.appendChild(messageDiv);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    } else {
+        console.log('Message ignored, not for active chat:', message);
+    }
+}
+
+        function displayOnlineUsers(users) {
+            const onlineUsersList = document.getElementById('onlineUsersList');
+            onlineUsersList.innerHTML = '';
+            users.forEach(user => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer';
+            li.innerHTML = `
+            <span class="w-3 h-3 bg-${user.status === 'online' ? 'green' : 'gray'}-500 rounded-full mr-2"></span>
+            <span>${user.name || 'Unknown'}</span>`;
+            
+        li.dataset.userId = user.id;
+        li.addEventListener('click', () => {
+            setActiveChat('user', user.id, user.name, user.status);
+        });
+        onlineUsersList.appendChild(li);
+    });
+}
+let activeChat = { type: null, id: null, name: null };
+
+// function setActiveChat(type, id, name, extraInfo) {
+//     activeChat = { type, id, name };
+//     console.log(`Active chat set to: ${type} - ${name} (ID: ${id})`);
+
+//     // Update chat header
+//     const chatHeader = document.querySelector('#chatAreaContainer .bg-gray-200');
+//     const title = chatHeader.querySelector('h2');
+//     const subtitle = chatHeader.querySelector('span');
+    
+//     title.textContent = name;
+//     subtitle.textContent = type === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo} members online`;
+
+//     // Clear chat area and load history (placeholder)
+//     chatArea.innerHTML = '';
+//     loadChatHistory(type, id);
+// }//ddddddddddddddddddddddddddddddddddddddddddddddd
+function setActiveChat(type, id, name, extraInfo) {
+        activeChat = { type, id, name };
+        console.log('Active chat set:', activeChat);
+        const chatHeader = document.querySelector('#chatAreaContainer .bg-gray-200');
+        const title = chatHeader.querySelector('h2');
+        const subtitle = chatHeader.querySelector('span');
+        title.textContent = name;
+        subtitle.textContent = type === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo} members online`;
+        chatArea.innerHTML = '';
+    }
+function loadChatHistory(type, id) {
+    console.log(`Loading history for ${type} ID: ${id}`);
+    // Future: Fetch chat history from server
+}
+
+// function displayUserGroups(groups) {
+//     const userGroupsList = document.getElementById('userGroupsList');
+//     userGroupsList.innerHTML = '';
+//     groups.forEach(group => {
+//         const li = document.createElement('li');
+//         li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer';
+//         li.innerHTML = `
+//             <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+//                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+//                 </svg>
+//             </span>
+//             <span>${group.name || 'Unnamed Group'}</span>
+//         `;
+//         li.dataset.groupId = group.id;
+//         li.addEventListener('click', () => {
+//             setActiveChat('group', group.id, group.name, group.members ? group.members.length : 0);
+//         });
+//         userGroupsList.appendChild(li);
+//     });
+// }
+
+function displayUserGroups(groups) {
+    const groupList = document.getElementById('groupList');
+    if (!groupList) {
+        console.error('groupList element not found');
+        return;
+    }
+    console.log('Groups from server:', groups);
+    groupList.innerHTML = '';
+    groups.forEach(group => {
+        const li = document.createElement('li');
+        li.className = 'p-2 hover:bg-gray-700 rounded-lg cursor-pointer';
+        li.textContent = group.name || 'Unnamed Group';
+        li.dataset.groupId = group.id;
+        li.addEventListener('click', () => {
+            console.log('Group clicked:', group.id, group.name);
+            setActiveChat('group', group.id, group.name, group.memberCount || 'Unknown');
+        });
+        groupList.appendChild(li);
+    });
+}
+
+
+sendBtn.addEventListener('click', () => {
+    console.log('Send button clicked');
+    const message = messageInput.value.trim();
+    console.log('Message input:', message, 'ActiveChat:', activeChat);
+    if (message && activeChat.type && activeChat.id) {
+        const messageData = {
+            type: activeChat.type === 'user' ? 'personal_message' : 'group_message',
+            receiver_id: activeChat.type === 'user' ? activeChat.id : undefined,
+            group_id: activeChat.type === 'group' ? activeChat.id : undefined,
+            content: message
+        };
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log('Sending message:', messageData);
+            ws.send(JSON.stringify(messageData));
+        } else {
+            console.log('WebSocket state:', ws ? ws.readyState : 'Not initialized');
+            displayMessage({
+                sender: sidebarName.textContent,
+                type: 'text', // For local display only
+                content: message,
+                timestamp: new Date().toISOString(),
+                targetType: activeChat.type,
+                targetId: activeChat.id
+            });
+        }
+        messageInput.value = '';
+    } else {
+        console.log('No active chat selected, empty message, or missing ID', 'Message:', message, 'ActiveChat:', activeChat);
+    }
+}, { once: true }); //
+
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+
+        emojiBtn.addEventListener('click', () => {
+            messageInput.value += '😊';
+            messageInput.focus();
+        });
+
+        mediaBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*,video/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    // For development, simulate sending media
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const messageData = {
+                            sender: sidebarName.textContent,
+                            type: file.type.startsWith('image') ? 'image' : 'video',
+                            content: event.target.result,
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify(messageData));
+                        } else {
+                            displayMessage(messageData);
+                        }
+                    };
+                    reader.onerror = () => console.error('Error reading file');
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        });
+
+        voiceChatBtn.addEventListener('click', () => {
+            alert('Voice chat feature coming soon!');
+        });
+
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('profilePhoto');
+            alert('Logged out successfully!');
+            // In a real app, you'd redirect to login page
+            // For dev purposes, reload with mock data
+            loadMockData();
+        });
+
+        async function fetchUserDetails() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const res = await fetch('http://localhost:8080/users/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    sidebarName.textContent = data.name || 'Unknown User';
+                    sidebarDesignation.textContent = data.designation || 'N/A';
+                    localStorage.setItem('sidebarName', data.name);
+                    localStorage.setItem('sidebarDesignation', data.designation || 'N/A');
+                } else {
+                    console.error('Failed to fetch user details');
+                    loadMockData();
+                }
+            } catch (err) {
+                console.error('Error fetching user details:', err.message);
+                loadMockData();
+            }
+        }
+
+    async function fetchOnlineUsers() {
+    const token = localStorage.getItem('token');
+    console.log('Token:', token);
+    if (!token) return;
+
+    try {
+        const res = await fetch('http://localhost:8080/users/all-users', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('Status:', res.status);
+        if (res.ok) {
+            const data = await res.json();
+            console.log('Users:..', data.users,data.id);
+            console.log('Users:......', data);
+
+            displayOnlineUsers(data.users);
+        } else {
+            console.error('Failed to fetch online users, status:', res.status);
+            displayOnlineUsers(mockUsers);
+        }
+    } catch (err) {
+        console.error('Error fetching online users:', err.message);
+        displayOnlineUsers(mockUsers);
+    }
+}
+       async function fetchUserGroups() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const res = await fetch('http://localhost:8080/users/user-groups', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    displayUserGroups(data.groups);
+                } else {
+                    console.error('Failed to fetch user groups');
+                    displayUserGroups(mockGroups);
+                }
+            } catch (err) {
+                console.error('Error fetching user groups:', err.message);
+                displayUserGroups(mockGroups);
+            }
+        }
+    // function fetchUserGroups() {
+    // const token = localStorage.getItem('token');
+    // fetch('http://localhost:8080/users/groups', {
+    //     headers: { 'Authorization': token }
+    // })
+    // .then(response => response.json())
+    // .then(data => {
+    //     console.log('Fetched groups:', data.groups);
+    //     displayUserGroups(data.groups);
+//     // })
+//     .catch(err => console.error('Error fetching groups:', err));
+// }
+        // // Initialize the app
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     connectWebSocket();
+        // });
+    document.addEventListener('DOMContentLoaded', () => {
+    const sendBtn = document.getElementById('sendBtn');
+    const messageInput = document.getElementById('messageInput');
+    const sidebarName = document.getElementById('sidebarName'); // Add this to your HTML if missing
+    const chatArea = document.getElementById('chatArea');
+    console.log('sendBtn:', sendBtn, 'messageInput:', messageInput, 'sidebarName:', sidebarName);
+
+    // if (!sendBtn || !messageInput || !sidebarName) {
+    //     console.error('Missing required elements');
+    //     return;
+    // }
+    if (!sendBtn || !messageInput || !sidebarName || !chatArea) {
+        console.error('Missing required elements');
+        return;
+    }
+    sendBtn.addEventListener('click', () => {
+    console.log('Send button clicked');
+
+    
+    const message = messageInput.value.trim();
+    console.log("actttttttttttttttttt",activeChat);
+    console.log('Message input:', message, 'ActiveChat:', activeChat); // Debug before condition
+    if (message && activeChat.type) {
+        const messageData = {
+            sender: sidebarName.textContent,
+            type: 'text',
+            content: message,
+            timestamp: new Date().toISOString(),
+            targetType: activeChat.type,
+            targetId: activeChat.id
+        };
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log('Sending message:', messageData);
+            ws.send(JSON.stringify(messageData));
+        } else {
+            console.log('WebSocket state:', ws ? ws.readyState : 'Not initialized');
+            displayMessage(messageData);
+        }
+        messageInput.value = ''; // Clear after sending
+    } else {
+        console.log('No active chat selected or empty message', 'Message:', message, 'ActiveChat:', activeChat);
+    }
+});
+
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendBtn.click();
+        }
+    });
+
+    emojiBtn.addEventListener('click', () => {
+        messageInput.value += '😊';
+        messageInput.focus();
+    });
+
+    mediaBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*,video/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const messageData = {
+                        sender: sidebarName.textContent,
+                        type: file.type.startsWith('image') ? 'image' : 'video',
+                        content: event.target.result,
+                        timestamp: new Date().toISOString(),
+                        targetType: activeChat.type,
+                        targetId: activeChat.id // Add these for consistency
+                    };
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify(messageData));
+                    } else {
+                        displayMessage(messageData);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        input.click();
+    });
+
+    connectWebSocket(); // Assuming this is called here
+});
+
+        // For development, initialize immediately
+        connectWebSocket();
+    </script>
+</body>
+</html>
