@@ -46,6 +46,10 @@ func (r *RedisService) GetUserStatus(userID int) (string, error) {
 }
 
 func (r *RedisService) PublishMessage(channel string, message string) error {
+
+	log.Println("out", message, channel)
+
+	log.Println("publishinggg....")
 	return r.client.Publish(r.ctx, channel, message).Err()
 }
 

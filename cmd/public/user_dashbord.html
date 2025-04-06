@@ -194,7 +194,7 @@
             { id: 1, name: "Engineering Team", members: 5 },
             { id: 2, name: "Marketing Team", members: 3 }
         ];
-
+        const userMap = new Map();
         // DOM Elements
         const menuBtn = document.getElementById('menuBtn');
         const sidebar = document.getElementById('sidebar');
@@ -249,8 +249,15 @@
                 };
                 
                 ws.onmessage = (event) => {
+                    console.log("*****event",event)
                     try {
                         const message = JSON.parse(event.data);
+                        console.log('Received:', message);
+                        if (message.error) {
+                            console.error('WebSocket error:', message.error);
+                                 return;
+                        }
+
                         displayMessage(message);
                     } catch (err) {
                         console.error('Error parsing WebSocket message:', err);
@@ -347,7 +354,7 @@
 function displayMessage(message) {
     console.log('Attempting to display:', message, 'Active chat:', activeChat);
     let targetType, targetId;
-    if (message.type === 'personal_message' || message.receiver_id) {
+    if (message.type === 'user' || message.receiver_id) {
         targetType = 'user';
         targetId = message.receiver_id;
     } else if (message.type === 'group_message' || message.group_id) {
@@ -363,7 +370,8 @@ function displayMessage(message) {
         }
         const sender = document.createElement('p');
         sender.classList.add('text-gray-600', 'text-sm');
-        sender.textContent = message.sender || 'Unknown';
+       // sender.textContent = message.sender || 'Unknown';
+       const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
         const contentDiv = document.createElement('div');
         contentDiv.classList.add(
             message.sender === sidebarName.textContent ? 'bg-indigo-600' : 'bg-gray-300',
@@ -480,10 +488,12 @@ function displayUserGroups(groups) {
 sendBtn.addEventListener('click', () => {
     console.log('Send button clicked');
     const message = messageInput.value.trim();
-    console.log('Message input:', message, 'ActiveChat:', activeChat);
+    console.log('Message input:', message);
+    console.log('ActiveChat:----------------------------', activeChat.type,message,activeChat.id);
+
     if (message && activeChat.type && activeChat.id) {
         const messageData = {
-            type: activeChat.type === 'user' ? 'personal_message' : 'group_message',
+            type: activeChat.type === 'user' ? 'user' : 'group',
             receiver_id: activeChat.type === 'user' ? activeChat.id : undefined,
             group_id: activeChat.type === 'group' ? activeChat.id : undefined,
             content: message
@@ -491,6 +501,8 @@ sendBtn.addEventListener('click', () => {
         if (ws && ws.readyState === WebSocket.OPEN) {
             console.log('Sending message:', messageData);
             ws.send(JSON.stringify(messageData));
+            console.log('done1');
+            
         } else {
             console.log('WebSocket state:', ws ? ws.readyState : 'Not initialized');
             displayMessage({
@@ -611,6 +623,8 @@ sendBtn.addEventListener('click', () => {
             console.log('Users:..', data.users,data.id);
             console.log('Users:......', data);
 
+      
+
             displayOnlineUsers(data.users);
         } else {
             console.error('Failed to fetch online users, status:', res.status);
@@ -621,44 +635,44 @@ sendBtn.addEventListener('click', () => {
         displayOnlineUsers(mockUsers);
     }
 }
-       async function fetchUserGroups() {
-            const token = localStorage.getItem('token');
-            if (!token) return;
+       // async function fetchUserGroups() {
+        //     const token = localStorage.getItem('token');
+        //     if (!token) return;
 
-            try {
-                const res = await fetch('http://localhost:8080/users/user-groups', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+        //     try {
+        //         const res = await fetch('http://localhost:8080/users/user-groups', {
+        //             method: 'GET',
+        //             headers: {
+        //                 'Authorization': `Bearer ${token}`,
+        //                 'Content-Type': 'application/json'
+        //             }
 
-                });
+        //         });
                 
-                if (res.ok) {
-                    const data = await res.json();
-                    displayUserGroups(data.groups);
-                } else {
-                    console.error('Failed to fetch user groups');
-                    displayUserGroups(mockGroups);
-                }
-            } catch (err) {
-                console.error('Error fetching user groups:', err.message);
-                displayUserGroups(mockGroups);
-            }
-        }
-    // function fetchUserGroups() {
-    // const token = localStorage.getItem('token');
-    // fetch('http://localhost:8080/users/groups', {
-    //     headers: { 'Authorization': token }
-    // })
-    // .then(response => response.json())
-    // .then(data => {
-    //     console.log('Fetched groups:', data.groups);
-    //     displayUserGroups(data.groups);
-//     // })
-//     .catch(err => console.error('Error fetching groups:', err));
-// }
+        //         if (res.ok) {
+        //             const data = await res.json();
+        //             displayUserGroups(data.groups);
+        //         } else {
+        //             console.error('Failed to fetch user groups');
+        //             displayUserGroups(mockGroups);
+        //         }
+        //     } catch (err) {
+        //         console.error('Error fetching user groups:', err.message);
+        //         displayUserGroups(mockGroups);
+        //     }
+        // }
+    function fetchUserGroups() {
+    const token = localStorage.getItem('token');
+    fetch('http://localhost:8080/users/groups', {
+        headers: { 'Authorization': token }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Fetched groups:', data.groups);
+        displayUserGroups(data.groups);
+    })
+    .catch(err => console.error('Error fetching groups:', err));
+}
         // // Initialize the app
         // document.addEventListener('DOMContentLoaded', () => {
         //     connectWebSocket();

@@ -80,6 +80,8 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 		for {
 			// Read client messages
 			_, clientMsg, err := conn.ReadMessage()
+
+			log.Println(string(clientMsg))
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					log.Printf("WebSocket read error for user %d: %v", userID, err)
@@ -89,19 +91,22 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 
 			// Parse and handle client request
 			type clientRequest struct {
-				Type       string `json:"type"`
-				ReceiverID int    `json:"receiver_id,omitempty"`
+				Type       string `json:"targetType"`
+				ReceiverID int    `json:"targetId,omitempty"`
 				GroupID    int    `json:"group_id,omitempty"`
 				Content    string `json:"content"`
 			}
+
 			var req clientRequest
+
+			log.Println("req", req)
 			if err := json.Unmarshal(clientMsg, &req); err != nil {
 				conn.WriteJSON(map[string]string{"error": "invalid message format"})
 				continue
 			}
-
+			log.Println("req", req)
 			switch req.Type {
-			case "personal_message":
+			case "user":
 				if err := h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content); err != nil {
 					conn.WriteJSON(map[string]string{"error": "failed to send personal message: " + err.Error()})
 				}
@@ -121,7 +126,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 					conn.WriteJSON(map[string]string{"error": "failed to send voice message: " + err.Error()})
 				}
 			default:
-				conn.WriteJSON(map[string]string{"error": "unknown message type"})
+				conn.WriteJSON(map[string]string{"error//": "unknown message type"})
 			}
 		}
 	}()
