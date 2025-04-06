@@ -90,13 +90,18 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 			}
 
 			// Parse and handle client request
+			// type clientRequest struct {
+			// 	Type       string `json:"targetType"`
+			// 	ReceiverID int    `json:"targetId,omitempty"`
+			// 	GroupID    int    `json:"group_id,omitempty"`
+			// 	Content    string `json:"content"`
+			// }
 			type clientRequest struct {
-				Type       string `json:"targetType"`
+				Type       string `json:"type"` // Fixed from "targetType"
 				ReceiverID int    `json:"targetId,omitempty"`
 				GroupID    int    `json:"group_id,omitempty"`
 				Content    string `json:"content"`
 			}
-
 			var req clientRequest
 
 			log.Println("req", req)
@@ -106,7 +111,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 			}
 			log.Println("req", req)
 			switch req.Type {
-			case "user":
+			case "personal_message":
 				if err := h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content); err != nil {
 					conn.WriteJSON(map[string]string{"error": "failed to send personal message: " + err.Error()})
 				}
@@ -126,12 +131,50 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 					conn.WriteJSON(map[string]string{"error": "failed to send voice message: " + err.Error()})
 				}
 			default:
-				conn.WriteJSON(map[string]string{"error//": "unknown message type"})
+				conn.WriteJSON(map[string]string{"error": "unknown message type"})
 			}
+			// switch req.Type {
+			// case "user":
+			// 	if err := h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content); err != nil {
+			// 		conn.WriteJSON(map[string]string{"error": "failed to send personal message: " + err.Error()})
+			// 	}
+			// case "group_message":
+			// 	if err := h.chatUsecase.SendGroupMessage(token, req.GroupID, req.Content); err != nil {
+			// 		conn.WriteJSON(map[string]string{"error": "failed to send group message: " + err.Error()})
+			// 	}
+			// case "voice_message":
+			// 	var receiverID, groupID *int
+			// 	if req.ReceiverID != 0 {
+			// 		receiverID = &req.ReceiverID
+			// 	}
+			// 	if req.GroupID != 0 {
+			// 		groupID = &req.GroupID
+			// 	}
+			// 	if err := h.chatUsecase.SendVoiceMessage(token, receiverID, groupID, req.Content); err != nil {
+			// 		conn.WriteJSON(map[string]string{"error": "failed to send voice message: " + err.Error()})
+			// 	}
+			// default:
+			// 	conn.WriteJSON(map[string]string{"error//": "unknown message type"})
+			// }
 		}
 	}()
 
 	// Push Redis messages to client
+	// for {
+	// 	select {
+	// 	case msg, ok := <-msgChan:
+	// 		if !ok {
+	// 			log.Printf("Redis channel closed for user %d", userID)
+	// 			return
+	// 		}
+	// 		if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+	// 			log.Printf("WebSocket write error for user %d: %v", userID, err)
+	// 			return
+	// 		}
+	// 	case <-done:
+	// 		return
+	// 	}
+	// }
 	for {
 		select {
 		case msg, ok := <-msgChan:
@@ -139,6 +182,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 				log.Printf("Redis channel closed for user %d", userID)
 				return
 			}
+			log.Printf("Sending to client %d: %s", userID, msg)
 			if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
 				log.Printf("WebSocket write error for user %d: %v", userID, err)
 				return

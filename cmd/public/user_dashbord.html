@@ -228,56 +228,98 @@
         // WebSocket Setup with Token
         let ws;
         
-        function connectWebSocket() {
-            const token = localStorage.getItem('token');
+        // function connectWebSocket() {
+        //     const token = localStorage.getItem('token');
             
-            // For development - if no token, use mock data instead of redirecting
-            if (!token) {
-                console.log("No token found. Using mock data for development.");
-                loadMockData();
+        //     // For development - if no token, use mock data instead of redirecting
+        //     if (!token) {
+        //         console.log("No token found. Using mock data for development.");
+        //         loadMockData();
+        //         return;
+        //     }
+
+        //     try {
+        //         ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
+                
+        //         ws.onopen = () => {
+        //             console.log('Connected to WebSocket server');
+        //             fetchUserDetails();
+        //             fetchOnlineUsers();
+        //             fetchUserGroups();
+        //         };
+                
+        //         ws.onmessage = (event) => {
+        //             console.log("*****event",event)
+        //             try {
+        //                 const message = JSON.parse(event.data);
+        //                 console.log('Received:', message);
+        //                 if (message.error) {
+        //                     console.error('WebSocket error:', message.error);
+        //                          return;
+        //                 }
+
+        //                 displayMessage(message);
+        //             } catch (err) {
+        //                 console.error('Error parsing WebSocket message:', err);
+        //             }
+        //         };
+                
+        //         ws.onerror = (error) => {
+        //             console.error("WebSocket error:", error);
+        //             loadMockData(); // Fallback to mock data on error
+        //         };
+                
+        //         ws.onclose = () => {
+        //             console.log("WebSocket closed, reconnecting...");
+        //             setTimeout(connectWebSocket, 3000); // Longer timeout
+        //         };
+        //     } catch (error) {
+        //         console.error("Failed to create WebSocket:", error);
+        //         loadMockData(); // Fallback to mock data on error
+        //     }
+        // }
+
+        function connectWebSocket() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.log("No token found. Using mock data.");
+        loadMockData();
+        return;
+    }
+    console.log('Connecting with token:', token);
+    ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
+
+    ws.onopen = () => {
+        console.log('Connected to WebSocket server');
+        console.log('WebSocket state:', ws.readyState); // 1 = OPEN
+        fetchUserDetails();
+        fetchOnlineUsers();
+        fetchUserGroups();
+    };
+
+    ws.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data);
+            console.log('Received:', message);
+            if (message.error) {
+                console.error('WebSocket error:', message.error);
                 return;
             }
-
-            try {
-                ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
-                
-                ws.onopen = () => {
-                    console.log('Connected to WebSocket server');
-                    fetchUserDetails();
-                    fetchOnlineUsers();
-                    fetchUserGroups();
-                };
-                
-                ws.onmessage = (event) => {
-                    console.log("*****event",event)
-                    try {
-                        const message = JSON.parse(event.data);
-                        console.log('Received:', message);
-                        if (message.error) {
-                            console.error('WebSocket error:', message.error);
-                                 return;
-                        }
-
-                        displayMessage(message);
-                    } catch (err) {
-                        console.error('Error parsing WebSocket message:', err);
-                    }
-                };
-                
-                ws.onerror = (error) => {
-                    console.error("WebSocket error:", error);
-                    loadMockData(); // Fallback to mock data on error
-                };
-                
-                ws.onclose = () => {
-                    console.log("WebSocket closed, reconnecting...");
-                    setTimeout(connectWebSocket, 3000); // Longer timeout
-                };
-            } catch (error) {
-                console.error("Failed to create WebSocket:", error);
-                loadMockData(); // Fallback to mock data on error
-            }
+            displayMessage(message);
+        } catch (err) {
+            console.error('Error parsing WebSocket message:', err);
         }
+    };
+
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+        console.log('WebSocket closed, reconnecting...');
+        setTimeout(connectWebSocket, 3000);
+    };
+}   
 
         function loadMockData() {
             // Load user details
@@ -350,47 +392,48 @@
 //         console.log('Message ignored, not for active chat:', message);
 //     }
 // }
-
 function displayMessage(message) {
     console.log('Attempting to display:', message, 'Active chat:', activeChat);
-    let targetType, targetId;
-    if (message.type === 'user' || message.receiver_id) {
-        targetType = 'user';
-        targetId = message.receiver_id;
-    } else if (message.type === 'group_message' || message.group_id) {
-        targetType = 'group';
-        targetId = message.group_id;
+    if (!activeChat || !activeChat.type) {
+        console.log('No active chat, skipping display');
+        return;
     }
-    if (targetType === activeChat.type && String(targetId) === String(activeChat.id)) {
-        console.log('Message matches active chat, displaying');
+
+    if (message.error) {
+        console.error('Message display failed:', message.error);
+        return;
+    }
+
+    const isForActiveChat =
+        (message.targetType === 'user' && activeChat.type === 'user' &&
+         (message.receiver_id === activeChat.id || message.sender_id === activeChat.id)) ||
+        (message.targetType === 'group' && activeChat.type === 'group' &&
+         message.group_id === activeChat.id);
+
+    if (!isForActiveChat) {
+        console.log('Message ignored, not for active chat:', message);
+        return;
+    }
+
+    if (message.type === 'text') {
+        const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
+        const isSentByMe = message.sender_id === parseInt(localStorage.getItem('user_id'));
         const messageDiv = document.createElement('div');
-        messageDiv.classList.add('mb-4');
-        if (message.sender === sidebarName.textContent) {
-            messageDiv.classList.add('text-right');
-        }
-        const sender = document.createElement('p');
-        sender.classList.add('text-gray-600', 'text-sm');
-       // sender.textContent = message.sender || 'Unknown';
-       const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
-        const contentDiv = document.createElement('div');
-        contentDiv.classList.add(
-            message.sender === sidebarName.textContent ? 'bg-indigo-600' : 'bg-gray-300',
-            message.sender === sidebarName.textContent ? 'text-white' : '',
-            'p-3', 'rounded-lg', 'inline-block', 'shadow-sm'
-        );
-        contentDiv.textContent = message.content || '[Empty Message]';
-        const timestamp = document.createElement('p');
-        timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        messageDiv.appendChild(sender);
-        messageDiv.appendChild(contentDiv);
-        messageDiv.appendChild(timestamp);
+        messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : ''}`;
+        messageDiv.innerHTML = `
+            <p class="text-gray-600 text-sm">${senderName}</p>
+            <div class="${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'} p-3 rounded-lg inline-block shadow-sm">
+                ${message.content || '[Empty Message]'}
+            </div>
+            <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+        `;
+        console.log('Appending message to chatArea');
         chatArea.appendChild(messageDiv);
         chatArea.scrollTop = chatArea.scrollHeight;
     } else {
-        console.log('Message ignored, not for active chat:', message);
+        console.error('Unsupported message type:', message.type);
     }
 }
-
         function displayOnlineUsers(users) {
             const onlineUsersList = document.getElementById('onlineUsersList');
             onlineUsersList.innerHTML = '';
@@ -484,41 +527,77 @@ function displayUserGroups(groups) {
     });
 }
 
-
 sendBtn.addEventListener('click', () => {
     console.log('Send button clicked');
-    const message = messageInput.value.trim();
-    console.log('Message input:', message);
-    console.log('ActiveChat:----------------------------', activeChat.type,message,activeChat.id);
-
-    if (message && activeChat.type && activeChat.id) {
-        const messageData = {
-            type: activeChat.type === 'user' ? 'user' : 'group',
-            receiver_id: activeChat.type === 'user' ? activeChat.id : undefined,
-            group_id: activeChat.type === 'group' ? activeChat.id : undefined,
-            content: message
-        };
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            console.log('Sending message:', messageData);
-            ws.send(JSON.stringify(messageData));
-            console.log('done1');
-            
-        } else {
-            console.log('WebSocket state:', ws ? ws.readyState : 'Not initialized');
-            displayMessage({
-                sender: sidebarName.textContent,
-                type: 'text', // For local display only
-                content: message,
-                timestamp: new Date().toISOString(),
-                targetType: activeChat.type,
-                targetId: activeChat.id
-            });
-        }
-        messageInput.value = '';
-    } else {
-        console.log('No active chat selected, empty message, or missing ID', 'Message:', message, 'ActiveChat:', activeChat);
+    const content = messageInput.value.trim();
+    console.log('Message input:', content, 'ActiveChat:', activeChat);
+    if (!content) {
+        console.log('Empty message entered');
+        alert('Please type a message before sending.');
+        return;
     }
-}, { once: true }); //
+    if (!activeChat.type || !activeChat.id) {
+        console.log('No active chat selected');
+        alert('Please select a user or group from the sidebar before sending a message.');
+        return;
+    }
+    const messageData = {
+        type: activeChat.type === 'user' ? 'personal_message' : 'group_message',
+        targetId: activeChat.type === 'user' ? activeChat.id : undefined,
+        group_id: activeChat.type === 'group' ? activeChat.id : undefined,
+        content: content
+    };
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('Sending message:', messageData);
+        ws.send(JSON.stringify(messageData));
+    } else {
+        console.log('WebSocket not open, displaying locally');
+        displayMessage({
+            sender_id: parseInt(localStorage.getItem('user_id')),
+            type: 'text',
+            targetType: activeChat.type,
+            [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+            content: content,
+            created_at: new Date().toISOString()
+        });
+    }
+    messageInput.value = '';
+});
+
+// sendBtn.addEventListener('click', () => {
+//     console.log('Send button clicked');
+//     const message = messageInput.value.trim();
+//     console.log('Message input:', message);
+//     console.log('ActiveChat:----------------------------', activeChat.type,message,activeChat.id);
+
+//     if (message && activeChat.type && activeChat.id) {
+//         const messageData = {
+//             type: activeChat.type === 'user' ? 'user' : 'group',
+//             receiver_id: activeChat.type === 'user' ? activeChat.id : undefined,
+//             group_id: activeChat.type === 'group' ? activeChat.id : undefined,
+//             content: message
+//         };
+//         if (ws && ws.readyState === WebSocket.OPEN) {
+//             console.log('Sending message:', messageData);
+//             ws.send(JSON.stringify(messageData));
+//             console.log('done1');
+            
+//         } else {
+//             console.log('WebSocket state:', ws ? ws.readyState : 'Not initialized');
+//             displayMessage({
+//                 sender: sidebarName.textContent,
+//                 type: 'text', // For local display only
+//                 content: message,
+//                 timestamp: new Date().toISOString(),
+//                 targetType: activeChat.type,
+//                 targetId: activeChat.id
+//             });
+//         }
+//         messageInput.value = '';
+//     } else {
+//         console.log('No active chat selected, empty message, or missing ID', 'Message:', message, 'ActiveChat:', activeChat);
+//     }
+// }, { once: true }); //
 
 
         messageInput.addEventListener('keypress', (e) => {
