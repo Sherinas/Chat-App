@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"fmt"
 	"log"
 	"strings"
 
@@ -15,8 +14,9 @@ type GroupRepository interface {
 	Update(group *domain.Group) error
 	Delete(id int) error
 	GetAll() ([]*domain.Group, error)
+	GetAllWithMembership(userID int) ([]*domain.Group, error)
 	GetAllGroupsByUserID(userID int) ([]*domain.Group, error)
-	AddMember(groupID, userID int) error
+	AddMember(userID, groupID int) error
 	RemoveMember(groupID, userID int) error
 }
 
@@ -43,10 +43,9 @@ func (r *groupRepository) GetAll() ([]*domain.Group, error) {
 }
 func (r *groupRepository) FindByID(id int) (*domain.Group, error) {
 	var group domain.Group
-	log.Println("................gpid", id)
+
 	err := r.db.Preload("Members").First(&group, id).Error
 
-	log.Println("errorrrrrrrrrrrrr", err)
 	if err != nil {
 
 		return nil, err
@@ -59,33 +58,14 @@ func (r *groupRepository) Update(group *domain.Group) error {
 	return r.db.Save(group).Error
 }
 
-func (r *groupRepository) Delete(id int) error {
-	return r.db.Delete(&domain.Group{}, id).Error
+func (r *groupRepository) AddMember(userID, groupID int) error {
+	log.Printf("Repository: Adding userID=%d to groupID=%d", userID, groupID)
+	return r.db.Model(&domain.User{ID: userID}).Association("Groups").Append(&domain.Group{ID: groupID})
 }
 
-func (r *groupRepository) AddMember(groupID, userID int) error {
-	return r.db.Exec("INSERT INTO user_groups (group_id, user_id) VALUES (?, ?)", groupID, userID).Error
+func (r *groupRepository) RemoveMember(userID, groupID int) error {
+	return r.db.Model(&domain.User{ID: userID}).Association("Groups").Delete(&domain.Group{ID: groupID})
 }
-
-func (r *groupRepository) RemoveMember(groupID, userID int) error {
-	err := r.db.Exec("DELETE FROM user_groups WHERE group_id = ? AND user_id = ?", groupID, userID).Error
-	if err != nil {
-		fmt.Println("Error removing user from group:", err)
-	}
-	return err
-	// return r.db.Exec("DELETE FROM user_groups WHERE group_id = ? AND user_id = ?", groupID, userID).Error
-}
-
-// func (r *groupRepository) GetAllGroupsByUserID(userID int) ([]*domain.Group, error) {
-// 	log.Println("running")
-// 	var groups []*domain.Group
-// 	if err := r.db.Joins("JOIN group_members ON group_members.group_id = groups.id").
-// 		Where("group_members.user_id = ?", userID).
-// 		Find(&groups).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	return groups, nil
-// }
 
 func (r *groupRepository) GetAllGroupsByUserID(userID int) ([]*domain.Group, error) {
 	log.Println("running")
@@ -105,4 +85,43 @@ func (r *groupRepository) GetAllGroupsByUserID(userID int) ([]*domain.Group, err
 		return nil, err
 	}
 	return groups, nil
+}
+
+func (r *groupRepository) GetAllWithMembership(userID int) ([]*domain.Group, error) {
+	var groups []*domain.Group
+	err := r.db.Model(&domain.Group{}).
+		Joins("LEFT JOIN user_groups ON user_groups.group_id = groups.id AND user_groups.user_id = ?", userID).
+		Find(&groups).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Add isJoined based on the join result (simplified; GORM doesn't directly set this)
+	for _, group := range groups {
+		group.Members = nil // Clear to avoid circular references
+		var count int64
+		r.db.Model(&domain.User{}).
+			Where("id = ? AND EXISTS (SELECT 1 FROM user_groups WHERE user_id = ? AND group_id = ?)", userID, userID, group.ID).
+			Count(&count)
+		if group.Permission == nil {
+			group.Permission = make(domain.PermissionMap)
+		}
+		group.Permission["isJoined"] = count > 0
+	}
+
+	return groups, nil
+}
+
+func (r *groupRepository) Delete(groupID int) error {
+	log.Printf("Repository: Deleting groupID=%d", groupID)
+	var group domain.Group
+	if err := r.db.First(&group, groupID).Error; err != nil {
+		return err
+	}
+
+	if err := r.db.Model(&domain.UserGroup{}).Where("group_id = ?", groupID).Delete(&domain.UserGroup{}).Error; err != nil {
+		return err
+	}
+
+	return r.db.Delete(&group).Error
 }

@@ -34,6 +34,8 @@ func (p *PermissionMap) Scan(value interface{}) error {
 	}
 }
 
+const AdminGroupID = 6
+
 type Group struct {
 	ID         int           `gorm:"primaryKey;autoIncrement"`
 	Name       string        `gorm:"type:varchar(255);not null"`
@@ -41,4 +43,9 @@ type Group struct {
 	Permission PermissionMap `gorm:"type:json;default:'{\"can_send\":true}'"`
 	CreatedAt  time.Time
 	Members    []User `gorm:"many2many:user_groups;"`
+}
+
+type UserGroup struct {
+	GroupID int `gorm:"column:group_id;not null;index"` // Matches user_groups.group_id
+	UserID  int `gorm:"column:user_id;not null;index"`  // Matches user_groups.user_id
 }

@@ -56,6 +56,27 @@
             font-size: 12px;
             font-weight: bold;
         }
+
+        .message-bubble {
+            max-width: 60%;
+            display: inline-block;
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .tick {
+            font-size: 12px;
+            color: #4fc3f7;
+            margin-left: 5px;
+        }
+
+        .sent .tick {
+            position: absolute;
+            right: 8px;
+            bottom: 2px;
+        }
     </style>
 </head>
 <body class="min-h-screen flex bg-gray-100">
@@ -71,7 +92,7 @@
         <div class="flex items-center mb-6">
             <a href="/users/profile" class="flex items-center">
                 <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center mr-3 logo-animation">
-                    <img id="sidebarProfilePhoto" src="https://via.placeholder.com/48" alt="Profile Photo" class="w-full h-full rounded-full object-cover">
+                    <img id="sidebarProfilePhoto" src="" alt="Profile Photo" class="w-full h-full rounded-full object-cover">
                 </div>
                 <div>
                     <h2 id="sidebarName" class="text-lg font-semibold">John Doe</h2>
@@ -113,9 +134,7 @@
                 </button>
             </div>
         </div>
-
         <div id="chatArea" class="flex-1 p-4 overflow-y-auto chat-area"></div>
-
         <div class="bg-gray-200 p-4 flex items-center shadow-md">
             <button id="voiceChatBtn" class="p-2 text-gray-600 hover:text-indigo-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,7 +171,8 @@
         const mockUsers = [
             { id: 1, name: "Alice Smith", status: "online" },
             { id: 2, name: "Bob Johnson", status: "online" },
-            { id: 3, name: "Carol Williams", status: "offline" }
+            { id: 3, name: "Alan", status: "online" },
+            { id: 5, name: "Sujith", status: "online" }
         ];
         const mockGroups = [
             { id: 1, name: "Engineering Team", memberCount: 5 },
@@ -192,7 +212,15 @@
                 sidebarProfilePhoto.onerror = () => { sidebarProfilePhoto.src = 'https://via.placeholder.com/48'; };
             }
             connectWebSocket();
+            logUserDetails(); // Log initial user details
         });
+
+        // Log User Details for Debugging
+        function logUserDetails() {
+            const userId = localStorage.getItem('user_id');
+            console.log('Current User ID from localStorage:', userId, 'Parsed:', parseInt(userId));
+            console.log('Active Chat:', activeChat);
+        }
 
         // Sidebar Toggle for Mobile
         menuBtn.addEventListener('click', () => {
@@ -206,28 +234,38 @@
                 return;
             }
             const token = localStorage.getItem('token');
-            if (!token) {
-                console.log("No token found. Using mock data.");
-                loadMockData();
+            const userId = localStorage.getItem('user_id');
+            console.log('Connecting WebSocket - Token:', token, 'User ID:', userId);
+            if (!token || !userId) {
+                console.error('No token or user ID. Please log in. Setting default user_id for debugging.');
+                const defaultUserId = prompt('Enter user ID (e.g., 3 for Alan, 5 for Sujith):');
+                if (defaultUserId) localStorage.setItem('user_id', defaultUserId);
+                window.location.reload();
                 return;
             }
-            console.log('Connecting with token:', token);
             ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
 
             ws.onopen = () => {
-                console.log('Connected to WebSocket server');
                 fetchUserDetails();
                 fetchOnlineUsers();
                 fetchUserGroups();
+                console.log('WebSocket opened for User:', userId);
             };
 
             ws.onmessage = (event) => {
+                console.log('Raw WebSocket data:', event.data);
                 try {
                     const message = JSON.parse(event.data);
-                    console.log('Received:', message);
+                    console.log('Received message:', message, 'for User:', localStorage.getItem('user_id'), 'Sender ID:', message.sender_id, 'Receiver ID:', message.receiver_id);
                     if (message.error) {
                         console.error('WebSocket error:', message.error);
                         return;
+                    }
+                    // Update status to 'seen' for sent messages if received back
+                    const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+                    if (message.sender_id === currentUserId && message.status === 'sent') {
+                        message.status = 'seen';
+                        console.log('Updated status to seen for message:', message);
                     }
                     displayMessage(message);
                 } catch (err) {
@@ -267,7 +305,9 @@
                     sidebarDesignation.textContent = data.designation || 'N/A';
                     localStorage.setItem('sidebarName', data.name);
                     localStorage.setItem('sidebarDesignation', data.designation || 'N/A');
-                    localStorage.setItem('user_id', data.id); // Store user ID
+                    localStorage.setItem('user_id', data.id); // Ensure user_id is set
+                    console.log('Fetched User Details:', data);
+                    logUserDetails();
                 } else {
                     console.error('Failed to fetch user details:', res.status);
                     loadMockData();
@@ -364,26 +404,41 @@
         // Set Active Chat
         function setActiveChat(type, id, name, extraInfo) {
             activeChat = { type, id, name };
-            console.log('Active chat set:', activeChat);
+            console.log('Active chat set to:', activeChat, 'for User:', localStorage.getItem('user_id'));
             chatHeader.textContent = name;
             chatSubHeader.textContent = type === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo} members`;
             chatArea.innerHTML = ''; // Clear chat area when switching
-            // Future: Load chat history here if needed
+            logUserDetails();
         }
 
-        // Display Message
+        // Display Message with Correct Alignment
+        const displayedMessages = new Map(); // Track messages by tempId or unique key
         function displayMessage(message) {
-            console.log('Attempting to display:', message, 'Active chat:', activeChat);
+            console.log('Attempting to display message:', message, 'Active chat:', activeChat);
             if (!activeChat || !activeChat.type) {
                 console.log('No active chat, skipping display');
                 return;
             }
+            const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+            console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id);
+            // if (isNaN(currentUserId)) {
+            //     console.error('Invalid currentUserId, setting to default for debugging:', currentUserId);
+            //     localStorage.setItem('user_id', prompt('Enter your user ID (e.g., 3 for Alan, 5 for Sujith):') || 0);
+            //     return;
+            // }
+            const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
+            if (displayedMessages.has(messageKey)) {
+                console.log('Duplicate message skipped:', message);
+                return;
+            }
+            displayedMessages.set(messageKey, message);
 
-            const isForActiveChat =
+            const isForActiveChat = 
                 (message.targetType === 'user' && activeChat.type === 'user' &&
-                 (message.receiver_id === activeChat.id || message.sender_id === activeChat.id)) ||
-                (message.targetType === 'group' && activeChat.type === 'group' &&
-                 message.group_id === activeChat.id);
+                 (message.receiver_id === activeChat.id || 
+                  message.sender_id === activeChat.id || 
+                  message.sender_id === currentUserId));
+            console.log('isForActiveChat:', isForActiveChat);
 
             if (!isForActiveChat) {
                 console.log('Message ignored, not for active chat:', message);
@@ -392,29 +447,36 @@
 
             if (message.type === 'text') {
                 const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
-                const isSentByMe = message.sender_id === parseInt(localStorage.getItem('user_id'));
+                const isSentByMe = message.sender_id === currentUserId;
+                console.log('isSentByMe:', isSentByMe, 'Current:', currentUserId, 'Sender:', message.sender_id);
+                const status = message.status || 'sent'; // Default to 'sent' if not provided
+                let tickIcon = '';
+                if (isSentByMe) {
+                    tickIcon = status === 'seen' ? '✓✓' : '✓'; // Two ticks for seen, one for sent
+                }
+
                 const messageDiv = document.createElement('div');
-                messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : ''}`;
+                messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'}`;
                 messageDiv.innerHTML = `
-                    <p class="text-gray-600 text-sm">${senderName}</p>
-                    <div class="${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'} p-3 rounded-lg inline-block shadow-sm">
+                    <p class="text-gray-600 text-sm">${!isSentByMe ? senderName : ''}</p>
+                    <div class="message-bubble ${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'}">
                         ${message.content || '[Empty Message]'}
+                        ${isSentByMe ? `<span class="tick">${tickIcon}</span>` : ''}
                     </div>
                     <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                 `;
-                console.log('Appending message to chatArea');
+                console.log('Appending message to chatArea, isSentByMe:', isSentByMe, 'Status:', status);
                 chatArea.appendChild(messageDiv);
                 chatArea.scrollTop = chatArea.scrollHeight;
-            } else {
-                console.error('Unsupported message type:', message.type);
             }
         }
 
-        // Send Message
+        // Send Message with Status Tracking
         sendBtn.addEventListener('click', () => {
             console.log('Send button clicked');
             const content = messageInput.value.trim();
             console.log('Raw input:', messageInput.value, 'Trimmed content:', content);
+            console.log('ActiveChat:', activeChat);
             if (!content) {
                 console.log('Empty message entered');
                 alert('Please type a message before sending.');
@@ -422,28 +484,46 @@
             }
             if (!activeChat || !activeChat.type || !activeChat.id) {
                 console.log('No active chat selected');
-                alert('Please select a user or group from the sidebar before sending a message.');
+                alert('Please select a user or group from the sidebar.');
                 return;
             }
+            const currentUserId = parseInt(localStorage.getItem('user_id'));
+            if (isNaN(currentUserId)) {
+                console.error('Invalid user_id:', currentUserId, 'Setting to default for debugging');
+                localStorage.setItem('user_id', prompt('Enter your user ID (e.g., 3 for Alan, 5 for Sujith):') || 0);
+                return;
+            }
+            const tempMessageId = Date.now(); // Unique ID for this message
             const messageData = {
                 type: activeChat.type === 'user' ? 'personal_message' : 'group_message',
                 targetId: activeChat.type === 'user' ? activeChat.id : undefined,
                 group_id: activeChat.type === 'group' ? activeChat.id : undefined,
-                content: content
+                content: content,
+                tempId: tempMessageId,
+                status: 'sent', // Initial status
+                sender_id: currentUserId, // Explicitly set sender_id
+                receiver_id: activeChat.type === 'user' ? activeChat.id : undefined // Ensure receiver_id
             };
+            const localMessage = {
+                sender_id: currentUserId,
+                type: 'text',
+                targetType: activeChat.type,
+                [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+                content: content,
+                created_at: new Date().toISOString(),
+                tempId: tempMessageId,
+                status: 'sent' // One tick initially
+            };
+
             if (ws && ws.readyState === WebSocket.OPEN) {
                 console.log('Sending message:', messageData);
                 ws.send(JSON.stringify(messageData));
+                console.log('Displaying locally:', localMessage);
+                displayMessage(localMessage);
             } else {
                 console.log('WebSocket not open, displaying locally');
-                displayMessage({
-                    sender_id: parseInt(localStorage.getItem('user_id')),
-                    type: 'text',
-                    targetType: activeChat.type,
-                    [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
-                    content: content,
-                    created_at: new Date().toISOString()
-                });
+                console.log('Displaying locally:', localMessage);
+                displayMessage(localMessage);
             }
             messageInput.value = '';
         });

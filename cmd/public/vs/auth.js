@@ -16,6 +16,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await res.json();
                 const error = document.getElementById("error");
                 if (data.token) {
+                    console.log(data.token);
+                    
                    localStorage.setItem("token", data.token);
                    localStorage.setItem("userRole", data.role);
                     window.location.href = "/users/dashboard";

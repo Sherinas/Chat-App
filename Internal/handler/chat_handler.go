@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/Sherinas/Chat-App-Clean/Internal/usecase"
@@ -27,6 +28,7 @@ func (h *ChatHandler) SendPersonalMessage(c *gin.Context) {
 	}
 
 	token := c.GetHeader("Authorization")
+	log.Println(token)
 	err := h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

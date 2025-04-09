@@ -11,10 +11,12 @@ import (
 
 type GroupHandler struct {
 	groupUsecase usecase.GroupUsecase
+	userUsec     usecase.UserUsecase
+	authservice  usecase.AuthService
 }
 
-func NewGroupHandler(groupUsecase usecase.GroupUsecase) *GroupHandler {
-	return &GroupHandler{groupUsecase: groupUsecase}
+func NewGroupHandler(groupUsecase usecase.GroupUsecase, authservice usecase.AuthService) *GroupHandler {
+	return &GroupHandler{groupUsecase: groupUsecase, authservice: authservice}
 }
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {
@@ -186,8 +188,40 @@ func (h *GroupHandler) RemoveUserFromGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "user removed from group"})
 }
 
-// func (h *UserHandler) GetAllGroupsBYID(c *gin.Context) {
-// 	groups, _ := h.gropUse.GetUserGroups()
+func (h *GroupHandler) GetAllGroupswithMember(c *gin.Context) {
 
-// 	c.JSON(http.StatusOK, gin.H{"Groups": groups})
-// }
+	userID, _, err := h.authservice.ValidateToken(c.GetHeader("Authorization"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+	groups, err := h.groupUsecase.GetAllGroupswithMember(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch groups: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": groups,
+	})
+}
+
+func (h *GroupHandler) DeleteGroup(c *gin.Context) {
+	type request struct {
+		GroupID int `json:"group_id" binding:"required"`
+	}
+	var req request
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	token := c.GetHeader("Authorization")
+	err := h.groupUsecase.DeleteGroup(token, req.GroupID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "group deleted successfully"})
+}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/Sherinas/Chat-App-Clean/Internal/domain"
@@ -172,7 +171,7 @@ func (u *UserUsecase) VerifyOTP(otp string) (string, error) {
 	user.Password = data.HashedPassword
 	user.State = "online" // Assuming State is a field; adjust if it’s Role
 	user.UpdateAt = time.Now()
-	if err := u.userRepo.Update(user); err != nil {
+	if err := u.userRepo.Update(user.ID, user); err != nil {
 		return "", err
 	}
 
@@ -218,7 +217,7 @@ func (u *UserUsecase) LoginWithEmployeeID(employeeID, password string) (string, 
 	}
 
 	user.State = "online"
-	if err := u.userRepo.Update(user); err != nil {
+	if err := u.userRepo.Update(user.ID, user); err != nil {
 		return "", err
 	}
 
@@ -251,7 +250,7 @@ func (u *UserUsecase) Logout(token string) error {
 		return err
 	}
 	user.State = "offline"
-	if err := u.userRepo.Update(user); err != nil {
+	if err := u.userRepo.Update(userID, user); err != nil {
 		return err
 	}
 
@@ -275,13 +274,11 @@ func generateOTP() string {
 
 func (u *UserUsecase) GetAllUsers() ([]domain.User, error) {
 
-	log.Println("working usecse")
 	users, err := u.userRepo.GetAllUsers()
 	if err != nil {
 		return nil, err
 	}
 
-	log.Println(&users)
 	// Enrich with Redis status
 	for _, user := range users {
 		status, err := u.redisService.GetUserStatus(user.ID)
@@ -305,4 +302,47 @@ func (u *UserUsecase) FindUserDetails(userID int) (*domain.User, error) {
 	}
 
 	return user, nil
+}
+
+// func (u *UserUsecase) UpdateUser(user *domain.User) error {
+// 	return u.userRepo.Update(user)
+// }
+
+func (u *UserUsecase) GetUserByID(id int) (*domain.User, error) {
+	return u.userRepo.FindByID(id)
+}
+func (u *UserUsecase) DeleteUser(token string, userID int) error {
+	adminID, role, err := u.authService.ValidateToken(token)
+	if err != nil {
+		return err
+	}
+	if role != "admin" && adminID != userID {
+		return errors.New("unauthorized: only admins or the user themselves can delete the user")
+	}
+
+	// Check if user exists and is not already deleted
+	user, err := u.userRepo.FindByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	return u.userRepo.Delete(user.ID) // check this
+}
+
+func (u *UserUsecase) UpdateUser(token string, userID int, user *domain.User) error {
+	adminID, role, err := u.authService.ValidateToken(token)
+	if err != nil {
+		return err
+	}
+	if role != "admin" && adminID != userID {
+		return errors.New("unauthorized: only admins or the user themselves can update the user")
+	}
+
+	// Check if user exists and is not deleted
+	_, err = u.userRepo.FindByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	return u.userRepo.Update(userID, user)
 }

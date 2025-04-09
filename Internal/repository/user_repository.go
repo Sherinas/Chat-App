@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"log"
+	"time"
+
 	"github.com/Sherinas/Chat-App-Clean/Internal/domain"
 	"gorm.io/gorm"
 )
@@ -11,9 +14,11 @@ type UserRepository interface {
 	FindByEmail(email string) (*domain.User, error)
 	FindByEmployeeID(employeeID string) (*domain.User, error)
 	GetAllUsers() ([]domain.User, error)
-	Update(user *domain.User) error
+	Update(userID int, user *domain.User) error
 	Delete(id int) error
 	AddToGroup(userID, groupID int) error
+	CountAdmins() (int64, error)
+	UpdateRole(id int, role string) error
 }
 
 type userRepository struct {
@@ -68,14 +73,62 @@ func (r *userRepository) FindByEmail(email string) (*domain.User, error) {
 	return &user, nil
 }
 
-func (r *userRepository) Update(user *domain.User) error {
-	return r.db.Save(user).Error
-}
+// func (r *userRepository) Update(user *domain.User) error {
+// 	return r.db.Save(user).Error
+// }
 
-func (r *userRepository) Delete(id int) error {
-	return r.db.Delete(&domain.User{}, id).Error
-}
+// func (r *userRepository) Delete(id int) error {
+// 	return r.db.Delete(&domain.User{}, id).Error
+// }
 
 func (r *userRepository) AddToGroup(userID, groupID int) error {
 	return r.db.Exec("INSERT INTO user_groups (user_id, group_id) VALUES (?, ?)", userID, groupID).Error
+}
+
+func (r *userRepository) CountAdmins() (int64, error) {
+	var count int64
+	err := r.db.Model(&domain.User{}).Where("role = ?", "admin").Count(&count).Error
+	return count, err
+}
+func (r *userRepository) UpdateRole(id int, role string) error {
+	var user domain.User
+	if err := r.db.First(&user, id).Error; err != nil {
+		return err
+	}
+	user.Role = role
+	return r.db.Save(&user).Error
+}
+
+func (r *userRepository) Delete(userID int) error {
+	log.Printf("Repository: Deactivating userID=%d", userID)
+	var user domain.User
+	if err := r.db.First(&user, userID).Error; err != nil {
+		return err
+	}
+
+	//Soft delete the user by setting DeletedAt
+	now := time.Now()
+	user.DeletedAt = &now
+	return r.db.Delete(&user).Error
+}
+
+func (r *userRepository) Update(userID int, user *domain.User) error {
+	log.Printf("Repository: Updating userID=%d", userID)
+	var existingUser domain.User
+	if err := r.db.Where("deleted_at IS NULL").First(&existingUser, userID).Error; err != nil {
+		return err
+	}
+
+	// Update only the fields provided in the user object
+	if user.Email != "" {
+		existingUser.Email = user.Email
+	}
+	if user.Password != "" {
+		existingUser.Password = user.Password
+	}
+	if user.Role != "" {
+		existingUser.Role = user.Role
+	}
+
+	return r.db.Save(&existingUser).Error
 }
