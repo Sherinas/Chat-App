@@ -114,7 +114,7 @@ func RegisterUserRoutes(router *gin.Engine, userUsecase usecase.UserUsecase, aut
 	adminMiddleware := middleware.AdminMiddleware()
 
 	// Public routes (no authentication required)
-	userGroupPublic := router.Group("/users")
+	userGroupPublic := router.Group("/auth")
 	{
 		userGroupPublic.POST("/signup", handler.SignUpWithEmployeeID)
 		userGroupPublic.POST("/verify-otp", handler.VerifyOTP)

@@ -1,36 +1,4 @@
-// Login form
-document.addEventListener("DOMContentLoaded", () => {
-    const loginForm = document.getElementById("login-form");
-    if (loginForm) {
-        loginForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const employeeId = document.getElementById("employeeId").value;
-            const password = document.getElementById("password").value;
 
-            try {
-                const res = await fetch("http://localhost:8080/users/login", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ employee_id: employeeId, password })
-                });
-                const data = await res.json();
-                const error = document.getElementById("error");
-                if (data.token) {
-                    console.log(data.token);
-                    
-                   localStorage.setItem("token", data.token);
-                   localStorage.setItem("userRole", data.role);
-                    window.location.href = "/users/dashboard";
-                } else {
-                    error.textContent = "Login failed: " + (data.error || "Unknown error");
-                    error.classList.remove("hidden");
-}
-            } catch (err) {
-                alert("Error: " + err.message);
-            }
-        };
-    }
-});
 
 // Register form
 const registerForm = document.getElementById("register-form");
@@ -72,7 +40,7 @@ if (registerForm) {
         }
 
         try {
-            const res = await fetch("http://localhost:8080/users/signup", {
+            const res = await fetch("http://localhost:8080/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 

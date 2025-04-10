@@ -41,21 +41,6 @@ func (h *UserHandler) GetUserGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"groups": groups})
 }
 
-// func (h *UserHandler) GetAllUsers(c *gin.Context) {
-// 	users, _ := h.userUsecase.GetAllUsers()
-
-// 	userList := make([]map[string]interface{}, len(users))
-// 	for i, user := range users {
-// 		status, _ := h.redisser.GetUserStatus(user.ID)
-// 		userList[i] = map[string]interface{}{
-// 			"id":     user.ID,
-// 			"name":   user.Name,
-// 			"status": status,
-// 		}
-// 	}
-// 	c.JSON(http.StatusOK, gin.H{"users": userList})
-// }
-
 func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	// Check if this is the admin-only endpoint (e.g., /all) by inspecting the path
 	isAdminEndpoint := c.Request.URL.Path == "/users/all"
@@ -115,6 +100,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		status = "offline"
 	}
 	c.JSON(http.StatusOK, gin.H{
+		"id":          user.ID,
 		"employee_id": user.EmployeeID,
 		"name":        user.Name,
 		"email":       user.Email,

@@ -13,4 +13,5 @@ type RedisService interface {
 	SetWithTTL(key, value string, ttl time.Duration) error // New
 	Delete(key string) error
 	Get(key string) (string, error)
+	BlacklistToken(token string, ttl time.Duration) error
 }

@@ -112,3 +112,7 @@ func (r *RedisService) Get(key string) (string, error) {
 	}
 	return val, err
 }
+
+func (r *RedisService) BlacklistToken(token string, ttl time.Duration) error {
+	return r.client.Set(r.ctx, "blacklist:"+token, "1", ttl).Err()
+}

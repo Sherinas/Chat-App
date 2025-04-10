@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/Sherinas/Chat-App-Clean/Internal/domain"
@@ -206,36 +207,100 @@ func (u *UserUsecase) VerifyOTP(otp string) (string, error) {
 }
 
 // LoginWithEmployeeID - Add Redis for token and status
-func (u *UserUsecase) LoginWithEmployeeID(employeeID, password string) (string, error) {
+// func (u *UserUsecase) LoginWithEmployeeID(employeeID, password string) (string, error) {
+// 	user, err := u.userRepo.FindByEmployeeID(employeeID)
+
+// 	if err != nil {
+// 		return "", errors.New("invalid employee ID")
+// 	}
+
+// 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+// 		return "", errors.New("invalid password")
+// 	}
+
+// 	user.State = "online"
+// 	if err := u.userRepo.Update(user.ID, user); err != nil {
+// 		return "", err
+// 	}
+
+// 	token, err := u.authService.GenerateToken(user.ID, user.Role)
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	u.redisService.SetToken(user.ID, token)
+// 	u.redisService.SetUserStatus(user.ID, "online")
+
+//		event := map[string]interface{}{
+//			"type":    "user_login",
+//			"user_id": user.ID,
+//		}
+//		eventJSON, _ := json.Marshal(event)
+//		u.redisService.PublishMessage("user_events", string(eventJSON))
+//		return token, nil
+//	}
+func (u *UserUsecase) LoginWithEmployeeID(employeeID, password string) (string, int, error) {
+	if employeeID == "" || password == "" {
+		return "", 0, errors.New("employee ID and password are required")
+	}
+
+	// Find user by EmployeeID
 	user, err := u.userRepo.FindByEmployeeID(employeeID)
 	if err != nil {
-		return "", errors.New("invalid employee ID")
+		return "", 0, errors.New("failed to retrieve user: " + err.Error())
 	}
 
+	// Check if user is soft-deleted
+	if user.DeletedAt != nil {
+		return "", 0, errors.New("account has been deactivated")
+	}
+
+	// Validate password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return "", errors.New("invalid password")
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return "", 0, errors.New("invalid password")
+		}
+		return "", 0, errors.New("password verification failed: " + err.Error())
 	}
 
-	user.State = "online"
-	if err := u.userRepo.Update(user.ID, user); err != nil {
-		return "", err
+	// Update user state to "online"
+	if user.State != "online" {
+		user.State = "online"
+		if err := u.userRepo.Update(user.ID, user); err != nil {
+			return "", 0, errors.New("failed to update user state: " + err.Error())
+		}
 	}
 
+	// Generate and store token
 	token, err := u.authService.GenerateToken(user.ID, user.Role)
 	if err != nil {
-		return "", err
+		return "", 0, errors.New("failed to generate token: " + err.Error())
 	}
 
-	u.redisService.SetToken(user.ID, token)
-	u.redisService.SetUserStatus(user.ID, "online")
+	// Store token and status in Redis
+	if err := u.redisService.SetToken(user.ID, token); err != nil {
+		return "", 0, errors.New("failed to store token: " + err.Error())
+	}
+	if err := u.redisService.SetUserStatus(user.ID, "online"); err != nil {
+		// Optionally roll back token if status fails, but for now log and continue
+		log.Printf("Warning: Failed to set user status in Redis: %v", err)
+	}
 
+	// Publish login event
 	event := map[string]interface{}{
 		"type":    "user_login",
 		"user_id": user.ID,
 	}
-	eventJSON, _ := json.Marshal(event)
-	u.redisService.PublishMessage("user_events", string(eventJSON))
-	return token, nil
+	eventJSON, err := json.Marshal(event)
+	if err != nil {
+		log.Printf("Warning: Failed to marshal login event: %v", err)
+	} else {
+		if err := u.redisService.PublishMessage("user_events", string(eventJSON)); err != nil {
+			log.Printf("Warning: Failed to publish login event: %v", err)
+		}
+	}
+
+	return token, user.ID, nil
 }
 
 // Logout - Remove token and update status in Redis
