@@ -27,7 +27,6 @@ func NewChatWebSocketHandler(chatUsecase usecase.ChatUsecase, redisService useca
 		redisService: redisService,
 	}
 }
-
 func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request) {
 	// Upgrade to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -37,7 +36,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	}
 	defer conn.Close()
 
-	log.Printf("http cupgrade to ws")
+	log.Printf("http upgraded to ws")
 
 	// Validate token
 	token := r.URL.Query().Get("token")
@@ -45,29 +44,36 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 		conn.WriteJSON(map[string]string{"error": "missing token"})
 		return
 	}
-	userID, _, err := h.chatUsecase.ValidateTokenWithRedis(token) // Use existing method
+	userID, _, err := h.chatUsecase.ValidateTokenWithRedis(token)
 	if err != nil {
 		conn.WriteJSON(map[string]string{"error": "invalid token: " + err.Error()})
 		return
 	}
 	log.Printf("User %d connected with token", userID)
 
-	// Determine subscription channel
-	groupIDStr := r.URL.Query().Get("group_id")
-	var channel string
+	// Determine subscription channels
+	// groupIDStr := r.URL.Query().Get("group_id")
+	groupIDStr := "5"
+	log.Printf("%T", groupIDStr)
+	log.Println("g----------------------------------------------------------p---", groupIDStr)
+	var channels []string
 	if groupIDStr != "" {
-		_, err := strconv.Atoi(groupIDStr)
+		groupID, err := strconv.Atoi(groupIDStr)
 		if err != nil {
 			conn.WriteJSON(map[string]string{"error": "invalid group_id"})
 			return
 		}
-		channel = "group:" + groupIDStr
+		channels = []string{"group:" + strconv.Itoa(groupID), "user:" + strconv.Itoa(userID)}
+		log.Printf("Subscribing user %d to channels: %v", userID, channels)
 	} else {
-		channel = "user:" + strconv.Itoa(userID)
+		channels = []string{"user:" + strconv.Itoa(userID)}
+		log.Println("HELLOOOOOOOO,ELSE")
 	}
 
-	// Subscribe to Redis channel
-	msgChan, err := h.redisService.SubscribeChannel(channel)
+	// Subscribe to Redis channels
+	msgChan, err := h.redisService.SubscribeToMultipleChannels(channels)
+
+	log.Println("............................", msgChan)
 	if err != nil {
 		conn.WriteJSON(map[string]string{"error": "subscription failed: " + err.Error()})
 		return
@@ -80,8 +86,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 		for {
 			// Read client messages
 			_, clientMsg, err := conn.ReadMessage()
-
-			log.Println(string(clientMsg))
+			log.Println("read---------", string(clientMsg))
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					log.Printf("WebSocket read error for user %d: %v", userID, err)
@@ -89,27 +94,29 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 				return
 			}
 
-			// Parse and handle client request
-			// type clientRequest struct {
-			// 	Type       string `json:"targetType"`
-			// 	ReceiverID int    `json:"targetId,omitempty"`
-			// 	GroupID    int    `json:"group_id,omitempty"`
-			// 	Content    string `json:"content"`
-			// }
 			type clientRequest struct {
 				Type       string `json:"type"` // Fixed from "targetType"
 				ReceiverID int    `json:"targetId,omitempty"`
 				GroupID    int    `json:"group_id,omitempty"`
 				Content    string `json:"content"`
+				SenderID   int    `json:"sender_id,omitempty"` // Add for validation
 			}
 			var req clientRequest
 
-			log.Println("req", req)
 			if err := json.Unmarshal(clientMsg, &req); err != nil {
 				conn.WriteJSON(map[string]string{"error": "invalid message format"})
 				continue
 			}
-			log.Println("req", req)
+
+			log.Println("reww==", token, req.GroupID, req.Content)
+			log.Println("req--", req)
+			if req.SenderID == 0 {
+				req.SenderID = userID // Default to authenticated userID
+			} else if req.SenderID != userID {
+				conn.WriteJSON(map[string]string{"error": "sender_id mismatch"})
+				continue
+			}
+
 			switch req.Type {
 			case "personal_message":
 				if err := h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content); err != nil {
@@ -133,48 +140,9 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 			default:
 				conn.WriteJSON(map[string]string{"error": "unknown message type"})
 			}
-			// switch req.Type {
-			// case "user":
-			// 	if err := h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content); err != nil {
-			// 		conn.WriteJSON(map[string]string{"error": "failed to send personal message: " + err.Error()})
-			// 	}
-			// case "group_message":
-			// 	if err := h.chatUsecase.SendGroupMessage(token, req.GroupID, req.Content); err != nil {
-			// 		conn.WriteJSON(map[string]string{"error": "failed to send group message: " + err.Error()})
-			// 	}
-			// case "voice_message":
-			// 	var receiverID, groupID *int
-			// 	if req.ReceiverID != 0 {
-			// 		receiverID = &req.ReceiverID
-			// 	}
-			// 	if req.GroupID != 0 {
-			// 		groupID = &req.GroupID
-			// 	}
-			// 	if err := h.chatUsecase.SendVoiceMessage(token, receiverID, groupID, req.Content); err != nil {
-			// 		conn.WriteJSON(map[string]string{"error": "failed to send voice message: " + err.Error()})
-			// 	}
-			// default:
-			// 	conn.WriteJSON(map[string]string{"error//": "unknown message type"})
-			// }
 		}
 	}()
 
-	// Push Redis messages to client
-	// for {
-	// 	select {
-	// 	case msg, ok := <-msgChan:
-	// 		if !ok {
-	// 			log.Printf("Redis channel closed for user %d", userID)
-	// 			return
-	// 		}
-	// 		if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
-	// 			log.Printf("WebSocket write error for user %d: %v", userID, err)
-	// 			return
-	// 		}
-	// 	case <-done:
-	// 		return
-	// 	}
-	// }
 	for {
 		select {
 		case msg, ok := <-msgChan:
@@ -182,7 +150,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 				log.Printf("Redis channel closed for user %d", userID)
 				return
 			}
-			log.Printf("Sending to client %d: %s", userID, msg)
+			log.Printf("Received from Redis for user %d: %s", userID, msg)
 			if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
 				log.Printf("WebSocket write error for user %d: %v", userID, err)
 				return

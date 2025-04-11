@@ -50,6 +50,7 @@ func (u *ChatUsecase) ValidateTokenWithRedis(token string) (int, string, error) 
 	}
 	return userID, role, nil
 }
+
 func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string) error {
 	senderID, _, err := u.ValidateTokenWithRedis(token)
 	if err != nil {
@@ -90,9 +91,9 @@ func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string
 
 	event := map[string]interface{}{
 		"type":       "text",
-		"targetType": "group", // Explicitly indicate group message
+		"targetType": "group",
 		"message_id": message.ID,
-		"group_id":   groupID, // Group ID
+		"group_id":   groupID,
 		"sender_id":  senderID,
 		"content":    content,
 		"created_at": message.CreatedAt,
@@ -100,12 +101,72 @@ func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("Failed to marshal event: %v", err)
-		return nil
+		return fmt.Errorf("failed to marshal event: %w", err)
 	}
-	u.redisService.PublishMessage("group:"+strconv.Itoa(groupID), string(eventJSON))
+	if err := u.redisService.PublishMessage("group:"+strconv.Itoa(groupID), string(eventJSON)); err != nil {
+		log.Printf("Failed to publish message to %s: %v", "group:"+strconv.Itoa(groupID), err)
+		return fmt.Errorf("failed to publish message: %w", err)
+	}
 
 	return nil
 }
+
+// func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string) error {
+// 	senderID, _, err := u.ValidateTokenWithRedis(token)
+// 	if err != nil {
+// 		return fmt.Errorf("token validation failed: %w", err)
+// 	}
+
+// 	if _, err := u.userRepo.FindByID(senderID); err != nil {
+// 		return fmt.Errorf("sender not found: %w", err)
+// 	}
+
+// 	group, err := u.groupRepo.FindByID(groupID)
+// 	if err != nil {
+// 		return fmt.Errorf("group not found: %w", err)
+// 	}
+// 	inGroup := false
+// 	for _, member := range group.Members {
+// 		if member.ID == senderID {
+// 			inGroup = true
+// 			break
+// 		}
+// 	}
+// 	if !inGroup {
+// 		return errors.New("sender not in group")
+// 	}
+// 	if !group.Permission["can_send"] {
+// 		return errors.New("group does not allow sending messages")
+// 	}
+
+// 	message := &domain.Message{
+// 		SenderID:  senderID,
+// 		GroupID:   &groupID,
+// 		Content:   content,
+// 		CreatedAt: time.Now(),
+// 	}
+// 	if err := u.messageRepo.Create(message); err != nil {
+// 		return fmt.Errorf("failed to save message: %w", err)
+// 	}
+
+// 	event := map[string]interface{}{
+// 		"type":       "text",
+// 		"targetType": "group", // Explicitly indicate group message
+// 		"message_id": message.ID,
+// 		"group_id":   groupID, // Group ID
+// 		"sender_id":  senderID,
+// 		"content":    content,
+// 		"created_at": message.CreatedAt,
+// 	}
+// 	eventJSON, err := json.Marshal(event)
+// 	if err != nil {
+// 		log.Printf("Failed to marshal event: %v", err)
+// 		return nil
+// 	}
+// 	u.redisService.PublishMessage("group:"+strconv.Itoa(groupID), string(eventJSON))
+
+// 	return nil
+// }
 
 // func (u *ChatUsecase) SendPersonalMessage(token string, receiverID int, content string) error {
 // 	senderID, _, err := u.ValidateTokenWithRedis(token)

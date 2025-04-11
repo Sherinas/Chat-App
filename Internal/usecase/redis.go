@@ -14,4 +14,5 @@ type RedisService interface {
 	Delete(key string) error
 	Get(key string) (string, error)
 	BlacklistToken(token string, ttl time.Duration) error
+	SubscribeToMultipleChannels(channels []string) (<-chan string, error)
 }

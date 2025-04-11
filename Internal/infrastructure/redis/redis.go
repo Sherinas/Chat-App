@@ -116,3 +116,24 @@ func (r *RedisService) Get(key string) (string, error) {
 func (r *RedisService) BlacklistToken(token string, ttl time.Duration) error {
 	return r.client.Set(r.ctx, "blacklist:"+token, "1", ttl).Err()
 }
+
+func (r *RedisService) SubscribeToMultipleChannels(channels []string) (<-chan string, error) {
+	pubsub := r.client.Subscribe(context.Background(), channels...)
+	if err := pubsub.Ping(context.Background()); err != nil {
+		return nil, err
+	}
+	msgChan := make(chan string)
+	go func() {
+		defer pubsub.Close()
+		for {
+			msg, err := pubsub.ReceiveMessage(context.Background())
+			if err != nil {
+				log.Printf("Subscription error: %v", err)
+				close(msgChan)
+				return
+			}
+			msgChan <- msg.Payload
+		}
+	}()
+	return msgChan, nil
+}

@@ -350,7 +350,8 @@
             sidebar.classList.toggle('open');
         });
 
-        // WebSocket Connection
+        // // WebSocket Connection
+     
         function connectWebSocket() {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 console.log('WebSocket already connected');
@@ -372,26 +373,26 @@
                 fetchUserGroups();
                 console.log('WebSocket opened for User:', userId);
             };
-
-            ws.onmessage = (event) => {
+           ws.onmessage = (event) => {
                 console.log('Raw WebSocket data:', event.data);
-                try {
-                    const message = JSON.parse(event.data);
-                    console.log('Received message:', message, 'for User:', localStorage.getItem('user_id'), 'Sender ID:', message.sender_id, 'Receiver ID:', message.receiver_id);
-                    if (message.error) {
-                        console.error('WebSocket error:', message.error);
-                        return;
-                    }
-                    const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
-                    if (message.sender_id === currentUserId && message.status === 'sent') {
-                        message.status = 'seen';
-                        console.log('Updated status to seen for message:', message);
-                    }
-                    displayMessage(message);
-                } catch (err) {
-                    console.error('Error parsing WebSocket message:', err);
+            try {
+                const message = JSON.parse(event.data);
+                console.log('Received message:', message, 'for User:', localStorage.getItem('user_id'), 'Active Chat:', activeChat);
+                if (message.error) {
+                    console.error('WebSocket error:', message.error);
+                    return;
                 }
-            };
+                const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+                if (message.sender_id === currentUserId && message.status === 'sent') {
+                    message.status = 'seen';
+                    console.log('Updated status to seen for message:', message);
+                }
+                displayMessage(message);
+            } catch (err) {
+                console.error('Error parsing WebSocket message:', err, 'Raw data:', event.data);
+            }
+        };
+           
 
             ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
@@ -402,7 +403,24 @@
                 setTimeout(connectWebSocket, 3000);
             };
         }
+       
+       
+       
+        
 
+
+function setActiveChat(chatType, chatId, chatName) {
+    activeChat = { type: chatType, id: chatId, name: chatName };
+    console.log('ActiveChat set to:', activeChat);
+    connectWebSocket();
+}
+
+// Ensure activeChat is set on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const initialGroupId = 5; // Known group ID
+    const initialGroupName = 'Tech support team';
+    setActiveChat('group', initialGroupId, initialGroupName);
+});
         // Load Mock Data
         function loadMockData() {
             sidebarName.textContent = localStorage.getItem('sidebarName') || 'John Doe';
@@ -556,73 +574,147 @@
     });
 }
 
-        // Set Active Chat
+        // // Set Active Chat
+        // function setActiveChat(type, id, name, extraInfo) {
+        //     activeChat = { type, id, name };
+        //     console.log('Active chat set to:', activeChat, 'for User:', localStorage.getItem('user_id'));
+        //     chatHeader.textContent = name;
+        //     chatSubHeader.textContent = type === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo} members`;
+        //     chatArea.innerHTML = '';
+        //     logUserDetails();
+        // }
         function setActiveChat(type, id, name, extraInfo) {
-            activeChat = { type, id, name };
-            console.log('Active chat set to:', activeChat, 'for User:', localStorage.getItem('user_id'));
-            chatHeader.textContent = name;
-            chatSubHeader.textContent = type === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo} members`;
-            chatArea.innerHTML = '';
-            logUserDetails();
-        }
-
+    activeChat = { type, id, name };
+    console.log('Active chat set to:', { type, id, name, extraInfo }, 'for User:', localStorage.getItem('user_id'));
+    chatHeader.textContent = name || 'Unknown Chat';
+    chatSubHeader.textContent = type === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo || 0} members`;
+    chatArea.innerHTML = '';
+    logUserDetails();
+    if (type === 'group' && ws) {
+        connectWebSocket(); // Reconnect with group_id
+    }
+}
         // Display Message with Correct Alignment and Forward
         const displayedMessages = new Map();
-        function displayMessage(message) {
-            console.log('Attempting to display message:', message, 'Active chat:', activeChat);
-            if (!activeChat || !activeChat.type) {
-                console.log('No active chat, skipping display');
-                return;
-            }
-            const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
-            console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id);
-            const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
-            if (displayedMessages.has(messageKey)) {
-                console.log('Duplicate message skipped:', message);
-                return;
-            }
-            displayedMessages.set(messageKey, message);
+        // function displayMessage(message) {
+        //     console.log('Attempting to display message:', message, 'Active chat:', activeChat);
+        //     if (!activeChat || !activeChat.type) {
+        //         console.log('No active chat, skipping display');
+        //         return;
+        //     }
+        //     const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+        //     console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id);
+        //     const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
+        //     if (displayedMessages.has(messageKey)) {
+        //         console.log('Duplicate message skipped:', message);
+        //         return;
+        //     }
+        //     displayedMessages.set(messageKey, message);
 
-            const isForActiveChat = 
-                (message.targetType === 'user' && activeChat.type === 'user' &&
-                 (message.receiver_id === activeChat.id || 
-                  message.sender_id === activeChat.id || 
-                  message.sender_id === currentUserId));
-            console.log('isForActiveChat:', isForActiveChat);
+        //     const isForActiveChat = 
+        //         (message.targetType === 'user' && activeChat.type === 'user' &&
+        //          (message.receiver_id === activeChat.id || 
+        //           message.sender_id === activeChat.id || 
+        //           message.sender_id === currentUserId));
+        //     console.log('isForActiveChat:', isForActiveChat);
 
-            if (!isForActiveChat) {
-                console.log('Message ignored, not for active chat:', message);
-                return;
-            }
+        //     if (!isForActiveChat) {
+        //         console.log('Message ignored, not for active chat:', message);
+        //         return;
+        //     }
 
-            if (message.type === 'text') {
-                const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
-                const isSentByMe = message.sender_id === currentUserId;
-                console.log('isSentByMe:', isSentByMe, 'Current:', currentUserId, 'Sender:', message.sender_id);
-                const status = message.status || 'sent';
-                let tickIcon = '';
-                if (isSentByMe) {
-                    tickIcon = status === 'seen' ? '✓✓' : '✓';
-                }
+        //     if (message.type === 'text') {
+        //         const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
+        //         const isSentByMe = message.sender_id === currentUserId;
+        //         console.log('isSentByMe:', isSentByMe, 'Current:', currentUserId, 'Sender:', message.sender_id);
+        //         const status = message.status || 'sent';
+        //         let tickIcon = '';
+        //         if (isSentByMe) {
+        //             tickIcon = status === 'seen' ? '✓✓' : '✓';
+        //         }
 
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'}`;
-                messageDiv.innerHTML = `
-                    <p class="text-gray-600 text-sm">${!isSentByMe ? senderName : ''}</p>
-                    <div class="message-bubble relative ${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'}">
-                        ${message.content || '[Empty Message]'}
-                        ${isSentByMe ? `<span class="tick">${tickIcon}</span>` : ''}
-                        ${isSentByMe ? '<span class="forward-btn" onclick="showForwardModal(\'' + message.content + '\')">↪</span>' : ''}
-                    </div>
-                    <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                `;
-                console.log('Appending message to chatArea, isSentByMe:', isSentByMe, 'Status:', status);
-                chatArea.appendChild(messageDiv);
-                chatArea.scrollTop = chatArea.scrollHeight;
-            }
-        }
+        //         const messageDiv = document.createElement('div');
+        //         messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'}`;
+        //         messageDiv.innerHTML = `
+        //             <p class="text-gray-600 text-sm">${!isSentByMe ? senderName : ''}</p>
+        //             <div class="message-bubble relative ${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'}">
+        //                 ${message.content || '[Empty Message]'}
+        //                 ${isSentByMe ? `<span class="tick">${tickIcon}</span>` : ''}
+        //                 ${isSentByMe ? '<span class="forward-btn" onclick="showForwardModal(\'' + message.content + '\')">↪</span>' : ''}
+        //             </div>
+        //             <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+        //         `;
+        //         console.log('Appending message to chatArea, isSentByMe:', isSentByMe, 'Status:', status);
+        //         chatArea.appendChild(messageDiv);
+        //         chatArea.scrollTop = chatArea.scrollHeight;
+        //     }
+        // }
 
         // Send Message with Status Tracking
+      
+        function displayMessage(message) {
+    console.log('Attempting to display message:', message, 'Active chat:', activeChat);
+    if (!activeChat || !activeChat.type || !activeChat.id) {
+        console.log('No active chat, skipping display. ActiveChat:', activeChat);
+        return;
+    }
+    const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+    console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id);
+
+    const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
+    if (displayedMessages.has(messageKey)) {
+        console.log('Duplicate message skipped:', message);
+        return;
+    }
+    displayedMessages.set(messageKey, message);
+
+    const isForActiveChat = 
+        (message.targetType === 'user' && activeChat.type === 'user' && 
+         (message.receiver_id === activeChat.id || message.sender_id === activeChat.id || message.sender_id === currentUserId)) ||
+        (message.targetType === 'group' && activeChat.type === 'group' && message.group_id === activeChat.id);
+    console.log('isForActiveChat check:', {
+        messageTargetType: message.targetType,
+        activeChatType: activeChat.type,
+        messageGroupId: message.group_id,
+        activeChatId: activeChat.id,
+        condition: isForActiveChat
+    });
+
+    if (!isForActiveChat) {
+        console.log('Message ignored, not for active chat. Possible reasons:', {
+            targetTypeMatch: message.targetType === 'group' && activeChat.type === 'group',
+            groupIdMatch: message.group_id === activeChat.id
+        });
+        return;
+    }
+
+    if (message.type === 'text') {
+        const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
+        const isSentByMe = message.sender_id === currentUserId;
+        console.log('isSentByMe:', isSentByMe, 'Current:', currentUserId, 'Sender:', message.sender_id);
+        const status = message.status || 'sent';
+        let tickIcon = '';
+        if (isSentByMe) {
+            tickIcon = status === 'seen' ? '✓✓' : '✓';
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'}`;
+        messageDiv.innerHTML = `
+            <p class="text-gray-600 text-sm">${activeChat.type === 'group' ? senderName : (isSentByMe ? '' : senderName)}</p>
+            <div class="message-bubble relative ${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'}">
+                ${message.content || '[Empty Message]'}
+                ${isSentByMe ? `<span class="tick">${tickIcon}</span>` : ''}
+                ${isSentByMe ? '<span class="forward-btn" onclick="showForwardModal(\'' + message.content + '\')">↪</span>' : ''}
+            </div>
+            <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+        `;
+        console.log('Appending message to chatArea, isSentByMe:', isSentByMe, 'Status:', status);
+        chatArea.appendChild(messageDiv);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+}
+      
         sendBtn.addEventListener('click', () => {
             console.log('Send button clicked');
             const content = messageInput.value.trim();
