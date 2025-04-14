@@ -86,7 +86,6 @@ func (u *UserUsecase) CreateAdminUser(employeeID, name, email, password string) 
 	return token, nil
 }
 
-// SignUpWithEmployeeID - No Redis change needed (OTP phase)
 func (u *UserUsecase) SignUpWithEmployeeID(employeeID, password, mobile, designation string) (string, error) {
 	user, err := u.userRepo.FindByEmployeeID(employeeID)
 	if err != nil {

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -84,4 +85,34 @@ func (h *ChatHandler) SendVoiceMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "voice message sent"})
+}
+
+func (h *ChatHandler) GetUnreadMessages(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	userID, _, err := h.chatUsecase.ValidateTokenWithRedis(token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	messages, err := h.chatUsecase.GetUnreadMessages(userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(messages)
+}
+
+func (h *ChatHandler) GetUnreadMessage(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")[7:]
+	userID, _, err := h.chatUsecase.ValidateTokenWithRedis(token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	messages, err := h.chatUsecase.GetUnreadMessages(userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(messages)
 }

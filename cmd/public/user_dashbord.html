@@ -267,660 +267,728 @@
     </div>
 
     <!-- JavaScript -->
-    <script>
-        // Mock data for development
-        const mockUsers = [
-            { id: 1, name: "Alice Smith", status: "online" },
-            { id: 2, name: "Bob Johnson", status: "online" },
-            { id: 3, name: "Alan", status: "offline" },
-            { id: 5, name: "Sujith", status: "online" }
-        ];
-        const mockGroups = [
-            { id: 1, name: "Engineering Team", memberCount: 5 },
-            { id: 2, name: "Marketing Team", memberCount: 3 }
-        ];
-        const mockNotifications = [
-            { id: 1, message: "New message from Alice", time: "2025-04-09 10:00" },
-            { id: 2, message: "Group invite from Engineering Team", time: "2025-04-09 09:30" }
-        ];
-        const emojis = ['😊', '😂', '❤️', '👍', '😢', '😍', '😴', '🤔', '😎', '👋', '🎉', '🚀'];
+   <!-- ... (Keep the existing HTML and CSS unchanged) ... -->
 
-        // DOM Elements
-        const menuBtn = document.getElementById('menuBtn');
-        const sidebar = document.getElementById('sidebar');
-        const chatArea = document.getElementById('chatArea');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const emojiBtn = document.getElementById('emojiBtn');
-        const micBtn = document.getElementById('micBtn');
-        const attachmentBtn = document.getElementById('attachmentBtn');
-        const voiceChatBtn = document.getElementById('voiceChatBtn');
-        const sidebarName = document.getElementById('sidebarName');
-        const sidebarDesignation = document.getElementById('sidebarDesignation');
-        const onlineUsersList = document.getElementById('onlineUsersList');
-        const userGroupsList = document.getElementById('userGroupsList');
-        const sidebarProfilePhoto = document.getElementById('sidebarProfilePhoto');
-        const chatHeader = document.getElementById('chatHeader');
-        const chatSubHeader = document.getElementById('chatSubHeader');
-        const recordingIndicator = document.getElementById('recordingIndicator');
-        const attachmentModal = document.getElementById('attachmentModal');
-        const notificationBtn = document.getElementById('notificationBtn');
-        const notificationModal = document.getElementById('notificationModal');
-        const notificationList = document.getElementById('notificationList');
-        const chatStatusBtn = document.getElementById('chatStatusBtn');
-        const searchInput = document.getElementById('searchInput');
-        const emojiModal = document.getElementById('emojiModal');
-        const emojiList = document.getElementById('emojiList');
-        const forwardModal = document.getElementById('forwardModal');
-        const forwardList = document.getElementById('forwardList');
-        const logoutBtn = document.getElementById('logoutBtn');
+<!-- JavaScript -->
+<script>
+    // Mock data for development
+    const mockUsers = [
+        { id: 1, name: "Alice Smith", status: "online" },
+        { id: 2, name: "Bob Johnson", status: "online" },
+        { id: 3, name: "Alan", status: "offline" },
+        { id: 5, name: "Sujith", status: "online" }
+    ];
+    const mockGroups = [
+        { id: 1, name: "Engineering Team", memberCount: 5 },
+        { id: 2, name: "Marketing Team", memberCount: 3 }
+    ];
+    const mockNotifications = [];
+    const mockMessageHistory = new Map(); // Store history per chat
+    const emojis = ['😊', '😂', '❤️', '👍', '😢', '😍', '😴', '🤔', '😎', '👋', '🎉', '🚀'];
 
-        // Global Variables
-        let ws;
-        let activeChat = null;
-        let isRecording = false;
-        const userMap = new Map();
+    // DOM Elements
+    const menuBtn = document.getElementById('menuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const chatArea = document.getElementById('chatArea');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const emojiBtn = document.getElementById('emojiBtn');
+    const micBtn = document.getElementById('micBtn');
+    const attachmentBtn = document.getElementById('attachmentBtn');
+    const voiceChatBtn = document.getElementById('voiceChatBtn');
+    const sidebarName = document.getElementById('sidebarName');
+    const sidebarDesignation = document.getElementById('sidebarDesignation');
+    const onlineUsersList = document.getElementById('onlineUsersList');
+    const userGroupsList = document.getElementById('userGroupsList');
+    const sidebarProfilePhoto = document.getElementById('sidebarProfilePhoto');
+    const chatHeader = document.getElementById('chatHeader');
+    const chatSubHeader = document.getElementById('chatSubHeader');
+    const recordingIndicator = document.getElementById('recordingIndicator');
+    const attachmentModal = document.getElementById('attachmentModal');
+    const notificationBtn = document.getElementById('notificationBtn');
+    const notificationModal = document.getElementById('notificationModal');
+    const notificationList = document.getElementById('notificationList');
+    const chatStatusBtn = document.getElementById('chatStatusBtn');
+    const searchInput = document.getElementById('searchInput');
+    const emojiModal = document.getElementById('emojiModal');
+    const emojiList = document.getElementById('emojiList');
+    const forwardModal = document.getElementById('forwardModal');
+    const forwardList = document.getElementById('forwardList');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const notificationBadge = document.getElementById('notificationBadge');
 
-        // Initialize on Page Load
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('Page loaded, clearing chat area');
-            chatArea.innerHTML = '';
-            const savedPhoto = localStorage.getItem('profilePhoto');
-            if (savedPhoto) {
-                sidebarProfilePhoto.src = savedPhoto;
-                sidebarProfilePhoto.onerror = () => { sidebarProfilePhoto.src = 'https://via.placeholder.com/48'; };
-            }
-            connectWebSocket();
-            logUserDetails();
-            loadMockData();
-            displayNotifications(mockNotifications);
-            setupSearch();
-            populateEmojis();
-        });
+    // Global Variables
+    let ws;
+    let activeChat = null;
+    let isRecording = false;
+    const userMap = new Map();
+    let mediaRecorder;
+    let audioChunks = [];
+    let unreadMessages = new Set(); // Track unread messages
 
-        // Log User Details for Debugging
-        function logUserDetails() {
-            const userId = localStorage.getItem('user_id');
-            console.log('Current User ID from localStorage:', userId, 'Parsed:', parseInt(userId));
-            console.log('Active Chat:', activeChat);
+    // Initialize on Page Load
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('Page loaded, initializing...');
+        chatArea.innerHTML = ''; // Clear chat area
+        const savedPhoto = localStorage.getItem('profilePhoto');
+        if (savedPhoto) {
+            sidebarProfilePhoto.src = savedPhoto;
+            sidebarProfilePhoto.onerror = () => { sidebarProfilePhoto.src = 'https://via.placeholder.com/48'; };
+        } else {
+            console.log('No profile photo in localStorage');
         }
+        connectWebSocket();
+        logUserDetails();
+        loadMockData();
+        displayNotifications(mockNotifications);
+        setupSearch();
+        populateEmojis();
+        const initialGroupId = 5; // Known group ID
+        const initialGroupName = 'Tech support team';
+        setActiveChat('group', initialGroupId, initialGroupName, initialGroupId === 5 ? 10 : 0); // Example member count
+        fetchMessageHistory(initialGroupId, 'group'); // Load initial history
+        console.log('Initialization complete, activeChat:', activeChat);
+    });
 
-        // Sidebar Toggle for Mobile
-        menuBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-        });
+    // Log User Details for Debugging
+    function logUserDetails() {
+        let userId = localStorage.getItem('user_id');
+        if (!userId || isNaN(parseInt(userId))) {
+            userId = prompt('Enter your user ID (e.g., 3 for Alan, 5 for Sujith):') || '0';
+            localStorage.setItem('user_id', userId);
+            console.warn('User ID not found or invalid, set to:', userId);
+        }
+        userId = parseInt(userId);
+        console.log('Current User ID from localStorage:', userId);
+        console.log('Active Chat:', activeChat);
+    }
 
-        // // WebSocket Connection
-     
-        function connectWebSocket() {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                console.log('WebSocket already connected');
-                return;
-            }
-            const token = localStorage.getItem('token');
-            const userId = localStorage.getItem('user_id');
-            console.log('Connecting WebSocket - Token:', token, 'User ID:', userId);
-            if (!token || !userId) {
-                console.warn('No token or user ID found. Using mock data or requiring login.');
-                loadMockData();
-                return;
-            }
-            ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
+    // Sidebar Toggle for Mobile
+    menuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        console.log('Sidebar toggled, state:', sidebar.classList.contains('open'));
+    });
 
-            ws.onopen = () => {
-                fetchUserDetails();
-                fetchOnlineUsers();
-                fetchUserGroups();
-                console.log('WebSocket opened for User:', userId);
-            };
-           ws.onmessage = (event) => {
-                console.log('Raw WebSocket data:', event.data);
+    // WebSocket Connection
+    function connectWebSocket() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log('WebSocket already connected');
+            return;
+        }
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('user_id');
+        console.log('Connecting WebSocket - Token:', token, 'User ID:', userId);
+        if (!token || !userId) {
+            console.warn('No token or user ID found. Using mock data or requiring login.');
+            loadMockData();
+            return;
+        }
+        ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
+
+        ws.onopen = () => {
+            console.log('WebSocket opened for User:', userId);
+            fetchUserDetails();
+            fetchOnlineUsers();
+            fetchUserGroups();
+            sendStatusUpdate(true); // Set status to online
+        };
+
+        ws.onmessage = (event) => {
+            console.log('Raw WebSocket data received:', event.data);
             try {
                 const message = JSON.parse(event.data);
-                console.log('Received message:', message, 'for User:', localStorage.getItem('user_id'), 'Active Chat:', activeChat);
+                console.log('Parsed message:', message);
                 if (message.error) {
                     console.error('WebSocket error:', message.error);
                     return;
                 }
                 const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+                if (message.sender_id !== currentUserId) {
+                    unreadMessages.add(JSON.stringify(message)); // Add to unread
+                    updateNotificationBadge();
+                }
                 if (message.sender_id === currentUserId && message.status === 'sent') {
-                    message.status = 'seen';
-                    console.log('Updated status to seen for message:', message);
+                    message.status = 'delivered'; // Update to delivered locally
                 }
                 displayMessage(message);
             } catch (err) {
                 console.error('Error parsing WebSocket message:', err, 'Raw data:', event.data);
             }
         };
-           
 
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
 
-            ws.onclose = () => {
-                console.log('WebSocket closed, reconnecting...');
-                setTimeout(connectWebSocket, 3000);
-            };
+        ws.onclose = () => {
+            console.log('WebSocket closed, reconnecting...');
+            setTimeout(connectWebSocket, 3000);
+        };
+    }
+
+    function setActiveChat(chatType, chatId, chatName, extraInfo) {
+        activeChat = { type: chatType, id: chatId, name: chatName };
+        console.log('Active chat set to:', activeChat, 'Extra Info:', extraInfo);
+        chatHeader.textContent = chatName || 'Unknown Chat';
+        chatSubHeader.textContent = chatType === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo || 0} members`;
+        chatArea.innerHTML = ''; // Clear chat area before loading history
+        fetchMessageHistory(chatId, chatType); // Load message history
+        markMessagesAsSeen(chatId, chatType); // Mark messages as seen
+        logUserDetails();
+        if (chatType === 'group' && ws) {
+            connectWebSocket(); // Reconnect with group_id
         }
-       
-       
-       
-        
+    }
 
+    // Load Mock Data
+    function loadMockData() {
+        sidebarName.textContent = localStorage.getItem('sidebarName') || 'John Doe';
+        sidebarDesignation.textContent = localStorage.getItem('sidebarDesignation') || 'Software Engineer';
+        displayOnlineUsers(mockUsers);
+        displayUserGroups(mockGroups);
+        console.log('Mock data loaded');
+    }
 
-function setActiveChat(chatType, chatId, chatName) {
-    activeChat = { type: chatType, id: chatId, name: chatName };
-    console.log('ActiveChat set to:', activeChat);
-    connectWebSocket();
-}
-
-// Ensure activeChat is set on page load
-document.addEventListener('DOMContentLoaded', () => {
-    const initialGroupId = 5; // Known group ID
-    const initialGroupName = 'Tech support team';
-    setActiveChat('group', initialGroupId, initialGroupName);
-});
-        // Load Mock Data
-        function loadMockData() {
-            sidebarName.textContent = localStorage.getItem('sidebarName') || 'John Doe';
-            sidebarDesignation.textContent = localStorage.getItem('sidebarDesignation') || 'Software Engineer';
-            displayOnlineUsers(mockUsers);
-            displayUserGroups(mockGroups);
-        }
-
-        // // Fetch User Details
-        async function fetchUserDetails() {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-            try {
-                const res = await fetch('http://localhost:8080/users/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    sidebarName.textContent = data.name || 'Unknown User';
-                    sidebarDesignation.textContent = data.designation || 'N/A';
-                    localStorage.setItem('sidebarName', data.name);
-                    localStorage.setItem('sidebarDesignation', data.designation || 'N/A');
-                    localStorage.setItem('user_id', data.id);
-                    console.log('Fetched User Details:', data);
-                    logUserDetails();
-                } else {
-                    console.error('Failed to fetch user details:', res.status);
-                    loadMockData();
-                }
-            } catch (err) {
-                console.error('Error fetching user details:', err);
+    // Fetch User Details
+    async function fetchUserDetails() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+            const res = await fetch('http://localhost:8080/users/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                sidebarName.textContent = data.name || 'Unknown User';
+                sidebarDesignation.textContent = data.designation || 'N/A';
+                localStorage.setItem('sidebarName', data.name);
+                localStorage.setItem('sidebarDesignation', data.designation || 'N/A');
+                localStorage.setItem('user_id', data.id);
+                console.log('Fetched User Details:', data);
+            } else {
+                console.error('Failed to fetch user details:', res.status);
                 loadMockData();
             }
+        } catch (err) {
+            console.error('Error fetching user details:', err);
+            loadMockData();
         }
+    }
 
-        // Fetch Online Users
-        async function fetchOnlineUsers() {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-            try {
-                const res = await fetch('http://localhost:8080/users/all-users', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log('Fetched users:', data.users);
-                    data.users.forEach(user => userMap.set(user.id, user.name));
-                    displayOnlineUsers(data.users);
-                } else {
-                    console.error('Failed to fetch online users:', res.status);
-                    displayOnlineUsers(mockUsers);
-                }
-            } catch (err) {
-                console.error('Error fetching online users:', err);
+    // Fetch Online Users
+    async function fetchOnlineUsers() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+            const res = await fetch('http://localhost:8080/users/all-users', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                console.log('Fetched users:', data.users);
+                data.users.forEach(user => userMap.set(user.id, user.name));
+                displayOnlineUsers(data.users);
+            } else {
+                console.error('Failed to fetch online users:', res.status);
                 displayOnlineUsers(mockUsers);
             }
+        } catch (err) {
+            console.error('Error fetching online users:', err);
+            displayOnlineUsers(mockUsers);
         }
+    }
 
-        // Fetch User Groups
+    // Fetch User Groups
     async function fetchUserGroups() {
-    const token = localStorage.getItem('token');
-    console.log('Token:', token);
-    if (!token) {
-        console.error('No token found in localStorage');
-        return;
-    }
-    try {
-        const res = await fetch('http://localhost:8080/users/user-groups', {
-            headers: { 'Authorization': `Bearer ${token}` },
-            method: 'GET'
-        });
-        console.log('Response status:', res.status);
-        console.log('Response headers:', Object.fromEntries(res.headers.entries()));
-        if (res.ok) {
-            const data = await res.json();
-            console.log('Fetched data:', data);
-            const groups = data.groups || []; // Ensure groups is an array
-            displayUserGroups(groups);
-        } else {
-            const errorText = await res.text();
-            console.error('Failed to fetch user groups:', res.status, errorText);
-            displayUserGroups(mockGroups); // Fallback to mock data
-        }
-    } catch (err) {
-        console.error('Error fetching user groups:', err);
-        displayUserGroups(mockGroups); // Fallback to mock data
-    }
-}
-        // Display Online Users
-        function displayOnlineUsers(users) {
-            onlineUsersList.innerHTML = '';
-            const onlineUsers = users.filter(user => user.status === 'online');
-            onlineUsers.forEach(user => {
-                const li = document.createElement('li');
-                li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer';
-                li.innerHTML = `
-                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                    <span>${user.name || 'Unknown'}</span>`;
-                li.dataset.userId = user.id;
-                li.addEventListener('click', () => {
-                    setActiveChat('user', user.id, user.name, user.status);
-                });
-                onlineUsersList.appendChild(li);
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+            const res = await fetch('http://localhost:8080/users/user-groups', {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-            const offlineUsers = users.filter(user => user.status !== 'online');
-            offlineUsers.forEach(user => {
-                const li = document.createElement('li');
-                li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer';
-                li.innerHTML = `
-                    <span class="w-3 h-3 bg-gray-500 rounded-full mr-2"></span>
-                    <span>${user.name || 'Unknown'}</span>`;
-                li.dataset.userId = user.id;
-                li.addEventListener('click', () => {
-                    setActiveChat('user', user.id, user.name, user.status);
-                });
-                onlineUsersList.appendChild(li);
+            if (res.ok) {
+                const data = await res.json();
+                console.log('Fetched groups:', data.groups);
+                displayUserGroups(data.groups || []);
+            } else {
+                console.error('Failed to fetch user groups:', res.status);
+                displayUserGroups(mockGroups);
+            }
+        } catch (err) {
+            console.error('Error fetching user groups:', err);
+            displayUserGroups(mockGroups);
+        }
+    }
+
+    // Display Online Users
+    function displayOnlineUsers(users) {
+        onlineUsersList.innerHTML = '';
+        users.forEach(user => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer';
+            li.innerHTML = `<span class="w-3 h-3 ${user.status === 'online' ? 'bg-green-500' : 'bg-gray-500'} rounded-full mr-2"></span><span>${user.name || 'Unknown'}</span>`;
+            li.dataset.userId = user.id;
+            li.addEventListener('click', () => setActiveChat('user', user.id, user.name, user.status));
+            onlineUsersList.appendChild(li);
+        });
+        console.log('Online users displayed:', users.length);
+    }
+
+    // Display User Groups
+    function displayUserGroups(groups) {
+        userGroupsList.innerHTML = '';
+        groups.forEach(group => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer';
+            li.innerHTML = `<span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg></span><span>${group.Name || 'Unnamed Group'}</span>`;
+            li.dataset.groupId = group.ID || group.id;
+            li.dataset.groupName = group.Name || group.name;
+            li.dataset.groupMemberCount = group.memberCount || 'Unknown';
+            li.addEventListener('click', () => {
+                const id = parseInt(li.dataset.groupId);
+                const name = li.dataset.groupName;
+                const memberCount = li.dataset.groupMemberCount;
+                setActiveChat('group', id, name, memberCount);
             });
+            userGroupsList.appendChild(li);
+        });
+        console.log('User groups displayed:', groups.length);
+    }
+
+    // Fetch Message History
+    async function fetchMessageHistory(chatId, chatType) {
+        const token = localStorage.getItem('token');
+        if (!token || !activeChat) {
+            console.log('No token or active chat, skipping history fetch');
+            return;
+        }
+        try {
+            const url = `http://localhost:8080/messages/history?${chatType}_id=${chatId}`;
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const messages = await res.json();
+                console.log('Fetched message history:', messages);
+                mockMessageHistory.set(`${chatType}:${chatId}`, messages);
+                messages.forEach(msg => displayMessage(msg));
+            } else {
+                console.error('Failed to fetch message history:', res.status);
+                const mockHistory = [
+                    { sender_id: 1, content: 'Hello!', created_at: '2025-04-10 10:00', status: 'seen', type: 'text', targetType: chatType, [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId },
+                    { sender_id: 2, content: 'Hi there!', created_at: '2025-04-10 10:05', status: 'delivered', type: 'text', targetType: chatType, [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId }
+                ];
+                mockMessageHistory.set(`${chatType}:${chatId}`, mockHistory);
+                mockHistory.forEach(msg => displayMessage(msg));
+            }
+        } catch (err) {
+            console.error('Error fetching message history:', err);
+        }
+    }
+
+    // Display Message with Reply and Forward
+    const displayedMessages = new Map();
+    function displayMessage(message) {
+        console.log('Displaying message:', message, 'Active chat:', activeChat);
+        if (!activeChat || !activeChat.type || !activeChat.id) {
+            console.log('No active chat defined, skipping display');
+            return;
+        }
+        const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+        console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id);
+
+        const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
+        if (displayedMessages.has(messageKey)) {
+            console.log('Duplicate message skipped:', messageKey);
+            return;
+        }
+        displayedMessages.set(messageKey, message);
+
+        const isForActiveChat = 
+            (message.targetType === 'user' && activeChat.type === 'user' && 
+             (message.receiver_id === activeChat.id || message.sender_id === activeChat.id || message.sender_id === currentUserId)) ||
+            (message.targetType === 'group' && activeChat.type === 'group' && message.group_id === activeChat.id);
+        console.log('isForActiveChat:', isForActiveChat);
+
+        if (!isForActiveChat) {
+            console.log('Message not for active chat, skipping');
+            return;
         }
 
-  
-        function displayUserGroups(groups) {
-    userGroupsList.innerHTML = '';
-    console.log('Displaying groups:', groups);
-    if (!groups || groups.length === 0) {
-        console.warn('No groups to display');
-        userGroupsList.innerHTML = '<li style="color: red;">No groups available</li>';
-        return;
-    }
-    groups.forEach(group => {
-        console.log('Group data:', group);
-        const li = document.createElement('li');
-        li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer';
-        li.innerHTML = `
-            <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
-                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                </svg>
-            </span>
-            <span>${group.Name || 'Unnamed Group'}</span>`;
-        li.dataset.groupId = group.ID || group.id; // Use ID from backend
-        li.dataset.groupName = group.Name || group.name; // Capture name
-        li.dataset.groupMemberCount = group.memberCount || 'Unknown'; // Capture member count
-        li.addEventListener('click', () => {
-            const id = parseInt(li.dataset.groupId);
-            const name = li.dataset.groupName;
-            const memberCount = li.dataset.groupMemberCount;
-            setActiveChat('group', id, name, memberCount);
-            console.log('Clicked group:', { id, name, memberCount }); // Debug
-        });
-        userGroupsList.appendChild(li);
-    });
-}
-
-        // // Set Active Chat
-        // function setActiveChat(type, id, name, extraInfo) {
-        //     activeChat = { type, id, name };
-        //     console.log('Active chat set to:', activeChat, 'for User:', localStorage.getItem('user_id'));
-        //     chatHeader.textContent = name;
-        //     chatSubHeader.textContent = type === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo} members`;
-        //     chatArea.innerHTML = '';
-        //     logUserDetails();
-        // }
-        function setActiveChat(type, id, name, extraInfo) {
-    activeChat = { type, id, name };
-    console.log('Active chat set to:', { type, id, name, extraInfo }, 'for User:', localStorage.getItem('user_id'));
-    chatHeader.textContent = name || 'Unknown Chat';
-    chatSubHeader.textContent = type === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo || 0} members`;
-    chatArea.innerHTML = '';
-    logUserDetails();
-    if (type === 'group' && ws) {
-        connectWebSocket(); // Reconnect with group_id
-    }
-}
-        // Display Message with Correct Alignment and Forward
-        const displayedMessages = new Map();
-        // function displayMessage(message) {
-        //     console.log('Attempting to display message:', message, 'Active chat:', activeChat);
-        //     if (!activeChat || !activeChat.type) {
-        //         console.log('No active chat, skipping display');
-        //         return;
-        //     }
-        //     const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
-        //     console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id);
-        //     const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
-        //     if (displayedMessages.has(messageKey)) {
-        //         console.log('Duplicate message skipped:', message);
-        //         return;
-        //     }
-        //     displayedMessages.set(messageKey, message);
-
-        //     const isForActiveChat = 
-        //         (message.targetType === 'user' && activeChat.type === 'user' &&
-        //          (message.receiver_id === activeChat.id || 
-        //           message.sender_id === activeChat.id || 
-        //           message.sender_id === currentUserId));
-        //     console.log('isForActiveChat:', isForActiveChat);
-
-        //     if (!isForActiveChat) {
-        //         console.log('Message ignored, not for active chat:', message);
-        //         return;
-        //     }
-
-        //     if (message.type === 'text') {
-        //         const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
-        //         const isSentByMe = message.sender_id === currentUserId;
-        //         console.log('isSentByMe:', isSentByMe, 'Current:', currentUserId, 'Sender:', message.sender_id);
-        //         const status = message.status || 'sent';
-        //         let tickIcon = '';
-        //         if (isSentByMe) {
-        //             tickIcon = status === 'seen' ? '✓✓' : '✓';
-        //         }
-
-        //         const messageDiv = document.createElement('div');
-        //         messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'}`;
-        //         messageDiv.innerHTML = `
-        //             <p class="text-gray-600 text-sm">${!isSentByMe ? senderName : ''}</p>
-        //             <div class="message-bubble relative ${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'}">
-        //                 ${message.content || '[Empty Message]'}
-        //                 ${isSentByMe ? `<span class="tick">${tickIcon}</span>` : ''}
-        //                 ${isSentByMe ? '<span class="forward-btn" onclick="showForwardModal(\'' + message.content + '\')">↪</span>' : ''}
-        //             </div>
-        //             <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-        //         `;
-        //         console.log('Appending message to chatArea, isSentByMe:', isSentByMe, 'Status:', status);
-        //         chatArea.appendChild(messageDiv);
-        //         chatArea.scrollTop = chatArea.scrollHeight;
-        //     }
-        // }
-
-        // Send Message with Status Tracking
-      
-        function displayMessage(message) {
-    console.log('Attempting to display message:', message, 'Active chat:', activeChat);
-    if (!activeChat || !activeChat.type || !activeChat.id) {
-        console.log('No active chat, skipping display. ActiveChat:', activeChat);
-        return;
-    }
-    const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
-    console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id);
-
-    const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
-    if (displayedMessages.has(messageKey)) {
-        console.log('Duplicate message skipped:', message);
-        return;
-    }
-    displayedMessages.set(messageKey, message);
-
-    const isForActiveChat = 
-        (message.targetType === 'user' && activeChat.type === 'user' && 
-         (message.receiver_id === activeChat.id || message.sender_id === activeChat.id || message.sender_id === currentUserId)) ||
-        (message.targetType === 'group' && activeChat.type === 'group' && message.group_id === activeChat.id);
-    console.log('isForActiveChat check:', {
-        messageTargetType: message.targetType,
-        activeChatType: activeChat.type,
-        messageGroupId: message.group_id,
-        activeChatId: activeChat.id,
-        condition: isForActiveChat
-    });
-
-    if (!isForActiveChat) {
-        console.log('Message ignored, not for active chat. Possible reasons:', {
-            targetTypeMatch: message.targetType === 'group' && activeChat.type === 'group',
-            groupIdMatch: message.group_id === activeChat.id
-        });
-        return;
-    }
-
-    if (message.type === 'text') {
-        const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
         const isSentByMe = message.sender_id === currentUserId;
-        console.log('isSentByMe:', isSentByMe, 'Current:', currentUserId, 'Sender:', message.sender_id);
+        const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
         const status = message.status || 'sent';
         let tickIcon = '';
         if (isSentByMe) {
-            tickIcon = status === 'seen' ? '✓✓' : '✓';
+            tickIcon = status === 'seen' ? '✓✓' : (status === 'delivered' ? '✓' : '');
         }
 
         const messageDiv = document.createElement('div');
-        messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'}`;
+        messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'} relative`;
+        let contentHTML = '';
+
+        if (message.type === 'text') {
+            contentHTML = message.content || '[Empty Message]';
+        } else if (message.type === 'audio_message') {
+            contentHTML = `<audio controls src="data:audio/webm;base64,${message.content || ''}"></audio>`;
+        } else if (message.type === 'file_message') {
+            contentHTML = `<a href="data:${message.filetype || 'application/octet-stream'};base64,${message.content || ''}" download="${message.filename || 'unknown_file'}" class="text-blue-500 underline">${message.filename || 'Unknown File'}</a>`;
+        }
+
         messageDiv.innerHTML = `
             <p class="text-gray-600 text-sm">${activeChat.type === 'group' ? senderName : (isSentByMe ? '' : senderName)}</p>
             <div class="message-bubble relative ${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'}">
-                ${message.content || '[Empty Message]'}
+                ${contentHTML}
                 ${isSentByMe ? `<span class="tick">${tickIcon}</span>` : ''}
-                ${isSentByMe ? '<span class="forward-btn" onclick="showForwardModal(\'' + message.content + '\')">↪</span>' : ''}
+                <div class="flex space-x-2 mt-1">
+                    <button class="reply-btn text-xs text-blue-500 hover:underline" data-message-id="${messageKey}">Reply</button>
+                    <button class="forward-btn text-xs text-green-500 hover:underline" onclick="showForwardModal('${encodeURIComponent(message.content || '')}', '${messageKey}')">Forward</button>
+                </div>
             </div>
             <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
         `;
-        console.log('Appending message to chatArea, isSentByMe:', isSentByMe, 'Status:', status);
-        chatArea.appendChild(messageDiv);
-        chatArea.scrollTop = chatArea.scrollHeight;
+        chatArea.appendChild(messageDiv); // Ensure message is added to DOM
+        chatArea.scrollTop = chatArea.scrollHeight; // Scroll to latest message
+        console.log('Message displayed in chatArea, count:', chatArea.childElementCount);
     }
-}
-      
-        sendBtn.addEventListener('click', () => {
-            console.log('Send button clicked');
-            const content = messageInput.value.trim();
-            console.log('Raw input:', messageInput.value, 'Trimmed content:', content);
-            console.log('ActiveChat:', activeChat);
-            if (!content) {
-                console.log('Empty message entered');
-                alert('Please type a message before sending.');
-                return;
-            }
-            if (!activeChat || !activeChat.type || !activeChat.id) {
-                console.log('No active chat selected');
-                alert('Please select a user or group from the sidebar.');
-                return;
-            }
-            const currentUserId = parseInt(localStorage.getItem('user_id'));
-            if (isNaN(currentUserId)) {
-                console.error('Invalid user_id:', currentUserId, 'Setting to default for debugging');
-                localStorage.setItem('user_id', prompt('Enter your user ID (e.g., 3 for Alan, 5 for Sujith):') || 0);
-                return;
-            }
-            const tempMessageId = Date.now();
-            const messageData = {
-                type: activeChat.type === 'user' ? 'personal_message' : 'group_message',
-                targetId: activeChat.type === 'user' ? activeChat.id : undefined,
-                group_id: activeChat.type === 'group' ? activeChat.id : undefined,
-                content: content,
-                tempId: tempMessageId,
-                status: 'sent',
-                sender_id: currentUserId,
-                receiver_id: activeChat.type === 'user' ? activeChat.id : undefined
-            };
-            const localMessage = {
-                sender_id: currentUserId,
-                type: 'text',
-                targetType: activeChat.type,
-                [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
-                content: content,
-                created_at: new Date().toISOString(),
-                tempId: tempMessageId,
-                status: 'sent'
-            };
 
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                console.log('Sending message:', messageData);
-                ws.send(JSON.stringify(messageData));
-                console.log('Displaying locally:', localMessage);
-                displayMessage(localMessage);
-            } else {
-                console.log('WebSocket not open, displaying locally');
-                console.log('Displaying locally:', localMessage);
-                displayMessage(localMessage);
-            }
-            messageInput.value = '';
-        });
+    // Send Message with Status Tracking
+    sendBtn.addEventListener('click', () => {
+        console.log('Send button clicked');
+        const content = messageInput.value.trim();
+        console.log('Message content:', content);
+        if (!content) {
+            console.log('Empty message');
+            alert('Please type a message before sending.');
+            return;
+        }
+        if (!activeChat || !activeChat.type || !activeChat.id) {
+            console.log('No active chat');
+            alert('Please select a user or group from the sidebar.');
+            return;
+        }
+        const currentUserId = parseInt(localStorage.getItem('user_id'));
+        if (isNaN(currentUserId)) {
+            console.error('Invalid user_id');
+            localStorage.setItem('user_id', prompt('Enter your user ID:') || 0);
+            return;
+        }
+        const tempMessageId = Date.now();
+        const messageData = {
+            type: activeChat.type === 'user' ? 'personal_message' : 'group_message',
+            targetType: activeChat.type,
+            [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+            content: content,
+            tempId: tempMessageId,
+            status: 'sent',
+            sender_id: currentUserId
+        };
+        const localMessage = {
+            sender_id: currentUserId,
+            type: 'text',
+            targetType: activeChat.type,
+            [activeChat.type === 'user' ? 'receiver_id' : 'activeChat.id'] : activeChat.id,
+            content: content,
+            created_at: new Date().toISOString(),
+            tempId: tempMessageId,
+            status: 'sent'
+        };
+        console.log('Sending message:', messageData);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(messageData));
+            console.log('Message sent via WebSocket');
+        } else {
+            console.log('WebSocket not open, displaying locally');
+        }
+        displayMessage(localMessage);
+        messageInput.value = '';
+    });
 
-        // Enter Key to Send
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendBtn.click();
-            }
-        });
-
-        // Mic Button for Recording
-        let recordingTimer;
-        micBtn.addEventListener('click', () => {
-            isRecording = !isRecording;
-            if (isRecording) {
-                recordingIndicator.classList.remove('hidden');
-                recordingIndicator.classList.add('recording-animation');
-                console.log('Recording started');
-                recordingTimer = setTimeout(() => {
+    // Mic Button for Recording
+    micBtn.addEventListener('click', async () => {
+        if (!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onload = () => sendMultimediaMessage('audio_message', reader.result.split(',')[1], null, null, 'audio.webm', 'audio/webm');
+                    reader.readAsDataURL(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
                     isRecording = false;
                     recordingIndicator.classList.add('hidden');
                     recordingIndicator.classList.remove('recording-animation');
-                    console.log('Recording stopped after 5 seconds');
-                    alert('Recording stopped. (Simulated)');
-                }, 5000);
-            } else {
-                clearTimeout(recordingTimer);
-                recordingIndicator.classList.add('hidden');
-                recordingIndicator.classList.remove('recording-animation');
-                console.log('Recording stopped manually');
+                };
+                mediaRecorder.start();
+                isRecording = true;
+                recordingIndicator.classList.remove('hidden');
+                recordingIndicator.classList.add('recording-animation');
+                setTimeout(() => mediaRecorder.stop(), 5000);
+            } catch (err) {
+                console.error('Microphone access denied:', err);
+                alert('Microphone access is required.');
             }
-        });
-
-        // Attachment Modal
-        attachmentBtn.addEventListener('click', () => {
-            attachmentModal.style.display = 'block';
-        });
-
-        // Notification Modal
-        notificationBtn.addEventListener('click', () => {
-            notificationModal.style.display = 'block';
-            const badge = document.getElementById('notificationBadge');
-            badge.textContent = mockNotifications.length;
-            badge.classList.remove('hidden');
-        });
-
-        function displayNotifications(notifications) {
-            notificationList.innerHTML = '';
-            notifications.forEach(notif => {
-                const li = document.createElement('li');
-                li.className = 'p-2 hover:bg-gray-100';
-                li.innerHTML = `
-                    <span>${notif.message}</span>
-                    <span class="text-xs text-gray-500 ml-2">${notif.time}</span>
-                `;
-                notificationList.appendChild(li);
-            });
+        } else {
+            mediaRecorder.stop();
         }
+    });
 
-        // Emoji Modal
-        function populateEmojis() {
-            emojis.forEach(emoji => {
-                const span = document.createElement('span');
-                span.className = 'text-2xl cursor-pointer hover:bg-gray-200 p-2 rounded';
-                span.textContent = emoji;
-                span.addEventListener('click', () => {
-                    messageInput.value += emoji;
-                    emojiModal.style.display = 'none';
-                    messageInput.focus();
-                });
-                emojiList.appendChild(span);
-            });
+    // Attachment Modal and File Upload
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = 'fileInput';
+    fileInput.style.display = 'none';
+    fileInput.accept = 'image/*,video/*,application/*';
+    fileInput.multiple = true;
+    document.body.appendChild(fileInput);
+    attachmentBtn.addEventListener('click', () => {
+        attachmentModal.style.display = 'block';
+        console.log('Attachment modal opened');
+    });
+    document.querySelectorAll('#attachmentModal li').forEach(item => {
+        item.addEventListener('click', () => {
+            fileInput.click();
+            attachmentModal.style.display = 'none';
+        });
+    });
+    fileInput.addEventListener('change', (event) => {
+        const files = event.target.files;
+        if (!files.length) {
+            console.log('No files selected');
+            alert('Please select a file.');
+            return;
         }
-        emojiBtn.addEventListener('click', () => {
-            emojiModal.style.display = 'block';
-        });
-
-        // Logout
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('profilePhoto');
-            localStorage.removeItem('user_id');
-            alert('Logged out successfully!');
-            window.location.href = '/auth/login';
-            loadMockData();
-        });
-
-        // Chat Status Button
-        let isOnline = true;
-        chatStatusBtn.addEventListener('click', () => {
-            isOnline = !isOnline;
-            chatStatusBtn.textContent = isOnline ? 'Go Offline' : 'Go Online';
-            chatStatusBtn.classList.toggle('bg-green-500', isOnline);
-            chatStatusBtn.classList.toggle('bg-red-500', !isOnline);
-            console.log('Chat status toggled to:', isOnline ? 'online' : 'offline');
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'status_update', status: isOnline ? 'online' : 'offline' }));
-            }
-        });
-
-        // Search Functionality
-        function setupSearch() {
-            searchInput.addEventListener('input', () => {
-                const query = searchInput.value.toLowerCase();
-                fetchOnlineUsers().then(() => {
-                    const users = [...mockUsers];
-                    const filteredUsers = users.filter(user => user.name.toLowerCase().includes(query));
-                    displayOnlineUsers(filteredUsers);
-                });
-                fetchUserGroups().then(() => {
-                    const groups = [...mockGroups];
-                    const filteredGroups = groups.filter(group => group.name.toLowerCase().includes(query));
-                    displayUserGroups(filteredGroups);
-                });
-            });
+        for (const file of files) {
+            const reader = new FileReader();
+            reader.onload = () => sendMultimediaMessage('file_message', reader.result.split(',')[1], null, null, file.name, file.type);
+            reader.readAsDataURL(file);
         }
+        event.target.value = '';
+    });
 
-        // Forward Modal
-        window.showForwardModal = function(content) {
-            forwardList.innerHTML = '';
-            [...mockUsers, ...mockGroups.map(g => ({ id: g.id, name: g.name, status: 'group' }))].forEach(target => {
-                const li = document.createElement('li');
-                li.className = 'p-2 hover:bg-gray-100 cursor-pointer';
-                li.innerHTML = `
-                    <span>${target.name} ${target.status === 'group' ? '(Group)' : (target.status === 'online' ? '(Online)' : '(Offline)')}</span>
-                `;
-                li.addEventListener('click', () => {
-                    console.log(`Forwarding "${content}" to ${target.name}`);
-                    alert(`Forwarded to ${target.name}. (Simulated)`);
-                    forwardModal.style.display = 'none';
-                });
-                forwardList.appendChild(li);
-            });
-            forwardModal.style.display = 'block';
-        };
+    // Notification Modal
+    notificationBtn.addEventListener('click', () => {
+        notificationModal.style.display = 'block';
+        notificationList.innerHTML = '';
+        unreadMessages.forEach(msg => {
+            const message = JSON.parse(msg);
+            const li = document.createElement('li');
+            li.className = 'p-2 hover:bg-gray-100';
+            li.innerHTML = `<span>${userMap.get(message.sender_id) || 'Unknown'} says: ${message.content}</span>`;
+            notificationList.appendChild(li);
+        });
+        unreadMessages.clear();
+        updateNotificationBadge();
+        console.log('Notification modal opened, cleared unread:', unreadMessages.size);
+    });
 
-        // Close Modals
-        document.querySelectorAll('.close').forEach(closeBtn => {
-            closeBtn.addEventListener('click', () => {
-                attachmentModal.style.display = 'none';
-                notificationModal.style.display = 'none';
+    function updateNotificationBadge() {
+        const count = unreadMessages.size;
+        notificationBadge.textContent = count;
+        notificationBadge.classList.toggle('hidden', count === 0);
+        console.log('Notification badge updated, count:', count);
+    }
+
+    function displayNotifications(notifications) {
+        notificationList.innerHTML = '';
+        notifications.forEach(notif => {
+            const li = document.createElement('li');
+            li.className = 'p-2 hover:bg-gray-100';
+            li.innerHTML = `<span>${notif.message}</span><span class="text-xs text-gray-500 ml-2">${notif.time}</span>`;
+            notificationList.appendChild(li);
+        });
+    }
+
+    // Emoji Modal
+    function populateEmojis() {
+        emojis.forEach(emoji => {
+            const span = document.createElement('span');
+            span.className = 'text-2xl cursor-pointer hover:bg-gray-200 p-2 rounded';
+            span.textContent = emoji;
+            span.addEventListener('click', () => {
+                messageInput.value += emoji;
                 emojiModal.style.display = 'none';
+                messageInput.focus();
+            });
+            emojiList.appendChild(span);
+        });
+    }
+    emojiBtn.addEventListener('click', () => {
+        emojiModal.style.display = 'block';
+        console.log('Emoji modal opened');
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('profilePhoto');
+        localStorage.removeItem('user_id');
+        alert('Logged out successfully!');
+        window.location.href = '/auth/login';
+        loadMockData();
+        console.log('Logged out');
+    });
+
+    // Chat Status Button
+    let isOnline = true;
+    chatStatusBtn.addEventListener('click', () => {
+        isOnline = !isOnline;
+        chatStatusBtn.textContent = isOnline ? 'Go Offline' : 'Go Online';
+        chatStatusBtn.classList.toggle('bg-green-500', isOnline);
+        chatStatusBtn.classList.toggle('bg-red-500', !isOnline);
+        sendStatusUpdate(isOnline);
+        if (isOnline) fetchUnreadMessages(); // Load unread messages when going online
+        console.log('Status toggled to:', isOnline ? 'online' : 'offline');
+    });
+
+    function sendStatusUpdate(status) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'status_update', status: status ? 'online' : 'offline' }));
+            console.log('Sent status update:', status);
+        }
+    }
+
+    async function fetchUnreadMessages() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+            const res = await fetch('http://localhost:8080/messages/unread', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const messages = await res.json();
+                console.log('Fetched unread messages:', messages);
+                messages.forEach(msg => displayMessage(msg));
+            } else {
+                console.error('Failed to fetch unread messages:', res.status);
+                const mockUnread = [{ sender_id: 1, content: 'Missed you!', created_at: '2025-04-11 14:00', status: 'sent', type: 'text', targetType: 'user', receiver_id: parseInt(localStorage.getItem('user_id')) }];
+                mockUnread.forEach(msg => displayMessage(msg));
+            }
+        } catch (err) {
+            console.error('Error fetching unread messages:', err);
+        }
+    }
+
+    // Search Functionality
+    function setupSearch() {
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase();
+            fetchOnlineUsers().then(() => {
+                const users = [...mockUsers];
+                const filteredUsers = users.filter(user => user.name.toLowerCase().includes(query));
+                displayOnlineUsers(filteredUsers);
+            });
+            fetchUserGroups().then(() => {
+                const groups = [...mockGroups];
+                const filteredGroups = groups.filter(group => group.name.toLowerCase().includes(query));
+                displayUserGroups(filteredGroups);
+            });
+        });
+    }
+
+    // Forward Modal
+    window.showForwardModal = function(content, messageKey) {
+        forwardList.innerHTML = '';
+        [...mockUsers, ...mockGroups.map(g => ({ id: g.id, name: g.name, status: 'group' }))].forEach(target => {
+            const li = document.createElement('li');
+            li.className = 'p-2 hover:bg-gray-100 cursor-pointer';
+            li.innerHTML = `<span>${target.name} ${target.status === 'group' ? '(Group)' : (target.status === 'online' ? '(Online)' : '(Offline)')}</span>`;
+            li.addEventListener('click', () => {
+                console.log(`Forwarding "${content}" to ${target.name}`);
+                const forwardMessage = {
+                    type: target.status === 'group' ? 'group_message' : 'personal_message',
+                    targetType: target.status === 'group' ? 'group' : 'user',
+                    [target.status === 'group' ? 'group_id' : 'receiver_id']: target.id,
+                    content: decodeURIComponent(content),
+                    created_at: new Date().toISOString(),
+                    sender_id: parseInt(localStorage.getItem('user_id')),
+                    status: 'sent'
+                };
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(forwardMessage));
+                    displayMessage(forwardMessage);
+                }
                 forwardModal.style.display = 'none';
             });
+            forwardList.appendChild(li);
         });
+        forwardModal.style.display = 'block';
+        console.log('Forward modal opened');
+    };
 
-        // Close modal when clicking outside
-        window.addEventListener('click', (e) => {
-            if (e.target === attachmentModal) attachmentModal.style.display = 'none';
-            if (e.target === notificationModal) notificationModal.style.display = 'none';
-            if (e.target === emojiModal) emojiModal.style.display = 'none';
-            if (e.target === forwardModal) forwardModal.style.display = 'none';
+    // Multimedia Message Sending
+    function sendMultimediaMessage(type, content, receiverId, groupId, filename, filetype) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            console.log('WebSocket not open, reconnecting...');
+            connectWebSocket();
+            return;
+        }
+        const senderId = parseInt(localStorage.getItem('user_id'));
+        const messageData = {
+            type: type,
+            sender_id: senderId,
+            content: content || '',
+            filename: filename || null,
+            filetype: filetype || null,
+            targetType: activeChat.type,
+            ...(activeChat.type === 'user' ? { receiver_id: activeChat.id } : { group_id: activeChat.id })
+        };
+        console.log('Sending multimedia message:', messageData);
+        ws.send(JSON.stringify(messageData));
+        const localMessage = {
+            sender_id: senderId,
+            type: type,
+            targetType: activeChat.type,
+            [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+            content: type === 'audio_message' ? '[Audio Message]' : '[File Message]',
+            created_at: new Date().toISOString(),
+            tempId: Date.now(),
+            status: 'sent'
+        };
+        displayMessage(localMessage);
+    }
+
+    // Mark Messages as Seen
+    function markMessagesAsSeen(chatId, chatType) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'mark_seen',
+                targetType: chatType,
+                [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId,
+                sender_id: parseInt(localStorage.getItem('user_id'))
+            }));
+            console.log('Marking messages as seen for chat:', chatId, chatType);
+            document.querySelectorAll('.message-bubble').forEach(div => {
+                const message = displayedMessages.get(div.querySelector('.reply-btn')?.dataset.messageId);
+                if (message && message.sender_id !== parseInt(localStorage.getItem('user_id'))) {
+                    message.status = 'seen';
+                    if (div.querySelector('.tick')) {
+                        div.querySelector('.tick').textContent = '✓✓';
+                    }
+                }
+            });
+        }
+    }
+
+    // Close Modals
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => {
+            attachmentModal.style.display = 'none';
+            notificationModal.style.display = 'none';
+            emojiModal.style.display = 'none';
+            forwardModal.style.display = 'none';
+            console.log('Modal closed');
         });
-    </script>
+    });
+    window.addEventListener('click', (e) => {
+        if (e.target === attachmentModal) attachmentModal.style.display = 'none';
+        if (e.target === notificationModal) notificationModal.style.display = 'none';
+        if (e.target === emojiModal) emojiModal.style.display = 'none';
+        if (e.target === forwardModal) forwardModal.style.display = 'none';
+    });
+</script>
 </body>
 </html>

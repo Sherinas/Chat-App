@@ -19,6 +19,7 @@ type UserRepository interface {
 	AddToGroup(userID, groupID int) error
 	CountAdmins() (int64, error)
 	UpdateRole(id int, role string) error
+	UpdateStatus(id int, status string) error
 }
 
 type userRepository struct {
@@ -73,14 +74,6 @@ func (r *userRepository) FindByEmail(email string) (*domain.User, error) {
 	return &user, nil
 }
 
-// func (r *userRepository) Update(user *domain.User) error {
-// 	return r.db.Save(user).Error
-// }
-
-// func (r *userRepository) Delete(id int) error {
-// 	return r.db.Delete(&domain.User{}, id).Error
-// }
-
 func (r *userRepository) AddToGroup(userID, groupID int) error {
 	return r.db.Exec("INSERT INTO user_groups (user_id, group_id) VALUES (?, ?)", userID, groupID).Error
 }
@@ -131,4 +124,7 @@ func (r *userRepository) Update(userID int, user *domain.User) error {
 	}
 
 	return r.db.Save(&existingUser).Error
+}
+func (r *userRepository) UpdateStatus(id int, status string) error {
+	return r.db.Model(&domain.User{}).Where("id = ?", id).Update("status", status).Error
 }

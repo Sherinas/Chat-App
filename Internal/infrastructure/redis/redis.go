@@ -2,7 +2,9 @@ package redis
 
 import (
 	"context"
+	"encoding/base64"
 	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -136,4 +138,16 @@ func (r *RedisService) SubscribeToMultipleChannels(channels []string) (<-chan st
 		}
 	}()
 	return msgChan, nil
+}
+
+func saveFile(content, filename, filetype string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(content)
+	if err != nil {
+		return "", err
+	}
+	filePath := "./uploads/" + filename
+	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+		return "", err
+	}
+	return filePath, nil
 }
