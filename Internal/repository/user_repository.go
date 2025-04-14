@@ -126,5 +126,5 @@ func (r *userRepository) Update(userID int, user *domain.User) error {
 	return r.db.Save(&existingUser).Error
 }
 func (r *userRepository) UpdateStatus(id int, status string) error {
-	return r.db.Model(&domain.User{}).Where("id = ?", id).Update("status", status).Error
+	return r.db.Model(&domain.User{}).Where("id = ?", id).Update("state", status).Error
 }
