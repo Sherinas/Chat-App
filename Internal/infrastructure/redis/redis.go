@@ -140,7 +140,7 @@ func (r *RedisService) SubscribeToMultipleChannels(channels []string) (<-chan st
 	return msgChan, nil
 }
 
-func saveFile(content, filename, filetype string) (string, error) {
+func SaveFile(content, filename, filetype string) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(content)
 	if err != nil {
 		return "", err

@@ -292,12 +292,14 @@ var upgrader = websocket.Upgrader{
 type ChatWebSocketHandler struct {
 	chatUsecase  usecase.ChatUsecase
 	redisService usecase.RedisService
+	useruse      usecase.UserUsecase
 }
 
-func NewChatWebSocketHandler(chatUsecase usecase.ChatUsecase, redisService usecase.RedisService) *ChatWebSocketHandler {
+func NewChatWebSocketHandler(chatUsecase usecase.ChatUsecase, redisService usecase.RedisService, useruse usecase.UserUsecase) *ChatWebSocketHandler {
 	return &ChatWebSocketHandler{
 		chatUsecase:  chatUsecase,
 		redisService: redisService,
+		useruse:      useruse,
 	}
 }
 
@@ -325,11 +327,10 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	log.Printf("User %d connected with token", userID)
 
 	// Determine subscription channels dynamically
-	//groupIDStr := r.URL.Query().Get("group_id")
-	groupIDStr := "5"
+	groupIDStr := r.URL.Query().Get("group_id")
 
 	log.Println("????????????????????????????????????????????????????????????????????????????", groupIDStr)
-	// Remove hardcoded value
+
 	var channels []string
 	if groupIDStr != "" {
 		groupID, err := strconv.Atoi(groupIDStr)
@@ -338,9 +339,12 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 			return
 		}
 		channels = []string{"group:" + strconv.Itoa(groupID), "user:" + strconv.Itoa(userID)}
+
+		log.Printf("aaaaaaaaaaaaa%T", channels)
 		log.Printf("Subscribing user %d to channels: %v", userID, channels)
 	} else {
 		channels = []string{"user:" + strconv.Itoa(userID)}
+		log.Printf("aaaaaaaaaaaaa%T", channels)
 		log.Printf("Subscribing user %d to personal channel only", userID)
 	}
 
@@ -352,7 +356,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	}
 
 	// Notify online status and fetch unread messages
-	if err := h.chatUsecase.UpdateUserStatus(userID, "online"); err != nil {
+	if err := h.useruse.SetUserState(userID, "online"); err != nil {
 		log.Printf("Failed to update status for user %d: %v", userID, err)
 	}
 	unreadMessages, err := h.chatUsecase.GetUnreadMessages(userID)
@@ -392,6 +396,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 				ForwardTo  *int    `json:"forward_to,omitempty"` // For forward functionality
 			}
 			if err := json.Unmarshal(clientMsg, &req); err != nil {
+				log.Println("Received message:", string(clientMsg))
 				conn.WriteJSON(map[string]string{"error": "invalid message format"})
 				continue
 			}
@@ -406,8 +411,11 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 			switch req.Type {
 			case "personal_message", "group_message":
 				var err error
+				var messageID int
 				if req.Type == "personal_message" {
-					err = h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content)
+					// err = h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content)
+					messageID, err = h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content)
+
 				} else {
 					err = h.chatUsecase.SendGroupMessage(token, req.GroupID, req.Content)
 				}
@@ -415,22 +423,37 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 					conn.WriteJSON(map[string]string{"error": "failed to send message: " + err.Error()})
 				}
 				// Update status to delivered after sending
-				if err == nil && req.ReceiverID != 0 {
-					h.chatUsecase.UpdateUserStatus(req.ReceiverID, "delivered")
+
+				log.Println("testttt", messageID)
+				// if err == nil && req.ReceiverID != 0 {
+				if err == nil && messageID != 0 {
+
+					log.Println("test1", req.ReceiverID, err)
+					h.chatUsecase.UpdateMessageStatus(messageID, "delivered")
 				}
 
-			case "audio_message", "file_message":
-				if req.GroupID == 0 && req.ReceiverID == 0 {
+			case "audio_message", "image_message", "file_message":
+				var receiverID, groupID *int
+				if req.ReceiverID != 0 {
+					id := req.ReceiverID
+					receiverID = &id
+				}
+				if req.GroupID != 0 {
+					id := req.GroupID
+					groupID = &id
+				}
+				if receiverID == nil && groupID == nil {
 					conn.WriteJSON(map[string]string{"error": "group_id or receiver_id required"})
 					continue
 				}
-				err := h.chatUsecase.SendMultimediaMessage(token, req.ReceiverID, req.GroupID, req.Content, *req.Filename, *req.Filetype, req.Type)
+				messageID, err := h.chatUsecase.SendMultimediaMessage(token, req.ReceiverID, req.GroupID, req.Content, *req.Filename, *req.Filetype, req.Type)
 				if err != nil {
 					conn.WriteJSON(map[string]string{"error": "failed to send multimedia: " + err.Error()})
 				}
-				// Update status to delivered
-				if err == nil && req.ReceiverID != 0 {
-					h.chatUsecase.UpdateUserStatus(req.ReceiverID, "delivered")
+				if err == nil && messageID != 0 {
+					if err := h.chatUsecase.UpdateMessageStatus(messageID, "delivered"); err != nil {
+						log.Printf("Failed to update message status for message %d: %v", messageID, err)
+					}
 				}
 
 			case "reply":
@@ -474,6 +497,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	for {
 		select {
 		case msg, ok := <-msgChan:
+
 			if !ok {
 				log.Printf("Redis channel closed for user %d", userID)
 				return
@@ -500,7 +524,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 				}
 			}
 		case <-done:
-			if err := h.chatUsecase.UpdateUserStatus(userID, "offline"); err != nil {
+			if err := h.useruse.SetUserState(userID, "offline"); err != nil {
 				log.Printf("Failed to update offline status for user %d: %v", userID, err)
 			}
 			return
@@ -508,7 +532,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func RegisterWebSocketRoute(mux *http.ServeMux, chatUsecase usecase.ChatUsecase, redisService usecase.RedisService) {
-	handler := NewChatWebSocketHandler(chatUsecase, redisService)
+func RegisterWebSocketRoute(mux *http.ServeMux, chatUsecase usecase.ChatUsecase, redisService usecase.RedisService, useruse usecase.UserUsecase) {
+	handler := NewChatWebSocketHandler(chatUsecase, redisService, useruse)
 	mux.HandleFunc("/ws/chat", handler.HandleChat)
 }

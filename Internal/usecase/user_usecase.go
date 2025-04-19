@@ -410,3 +410,13 @@ func (u *UserUsecase) UpdateUser(token string, userID int, user *domain.User) er
 
 	return u.userRepo.Update(userID, user)
 }
+
+func (u *UserUsecase) SetUserState(userID int, state string) error {
+	err := u.userRepo.UpdateStatus(userID, state)
+	if err != nil {
+		return err
+	}
+
+	u.redisService.SetUserStatus(userID, state)
+	return nil
+}

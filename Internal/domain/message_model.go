@@ -31,6 +31,6 @@ type Message struct {
 	IsFile     bool      `json:"is_file"`
 	IsVoice    bool      `json:"is_voice"`
 	CreatedAt  time.Time `json:"created_at"`
-	Status     string    `json:"status"` // "sent", "delivered", "seen"
+	Status     string    `json:"status;default:'sent'"` // "sent", "delivered", "seen"
 	ReplyTo    *int      `json:"reply_to,omitempty"`
 }

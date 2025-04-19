@@ -563,15 +563,23 @@
             return;
         }
         try {
-            const url = `http://localhost:8080/messages/history?${chatType}_id=${chatId}`;
-            const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            let url = `http://localhost:8080/chat/history?type=${chatType}`;
+        if (chatType === 'user') {
+            url += `&user_id=${userId}&receiver_id=${chatId}`; // Fetch between userId and chatId
+        } else if (chatType === 'group') {
+            url += `&group_id=${chatId}`;
+        }
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
             if (res.ok) {
                 const messages = await res.json();
                 console.log('Fetched message history:', messages);
                 mockMessageHistory.set(`${chatType}:${chatId}`, messages);
+                
                 messages.forEach(msg => displayMessage(msg));
+
+
             } else {
                 console.error('Failed to fetch message history:', res.status);
                 const mockHistory = [
@@ -706,36 +714,51 @@
 
     // Mic Button for Recording
     micBtn.addEventListener('click', async () => {
-        if (!isRecording) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.onload = () => sendMultimediaMessage('audio_message', reader.result.split(',')[1], null, null, 'audio.webm', 'audio/webm');
-                    reader.readAsDataURL(audioBlob);
-                    stream.getTracks().forEach(track => track.stop());
-                    isRecording = false;
-                    recordingIndicator.classList.add('hidden');
-                    recordingIndicator.classList.remove('recording-animation');
+    if (!isRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64Data = reader.result.split(',')[1]; // Extract only the Base64 part
+                    if (!base64Data) {
+                        console.error('No Base64 data extracted');
+                        return;
+                    }
+                    const ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${localStorage.getItem('token')}&group_id=${activeChat?.id || ''}`);
+                    ws.onopen = () => {
+                        ws.send(JSON.stringify({
+                            type: 'audio_message',
+                            content: base64Data,
+                            filename: 'voice.webm',
+                            filetype: 'audio/webm',
+                            [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id
+                        }));
+                        ws.close();
+                    };
                 };
-                mediaRecorder.start();
-                isRecording = true;
-                recordingIndicator.classList.remove('hidden');
-                recordingIndicator.classList.add('recording-animation');
-                setTimeout(() => mediaRecorder.stop(), 5000);
-            } catch (err) {
-                console.error('Microphone access denied:', err);
-                alert('Microphone access is required.');
-            }
-        } else {
-            mediaRecorder.stop();
+                reader.readAsDataURL(audioBlob);
+                stream.getTracks().forEach(track => track.stop());
+                isRecording = false;
+                recordingIndicator.classList.add('hidden');
+            };
+            mediaRecorder.start();
+            isRecording = true;
+            recordingIndicator.classList.remove('hidden');
+            recordingIndicator.classList.add('recording-animation');
+            setTimeout(() => mediaRecorder.stop(), 5000);
+        } catch (err) {
+            console.error('Microphone access denied:', err);
+            alert('Microphone access is required.');
         }
-    });
-
+    } else {
+        mediaRecorder.stop();
+    }
+});
     // Attachment Modal and File Upload
     const fileInput = document.createElement('input');
     fileInput.type = 'file';

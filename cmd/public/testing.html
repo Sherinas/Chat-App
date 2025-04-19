@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Chat Tester</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #chat {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 300px;
+      overflow-y: scroll;
+      margin-bottom: 10px;
+    }
+    #messageInput {
+      width: 70%;
+      padding: 5px;
+    }
+    button {
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>WebSocket Chat Tester</h2>
+  <div>
+    <label>Employee ID: </label>
+    <input id="employeeId" type="text" placeholder="e.g., employeeA">
+    <button onclick="login()">Login</button>
+  </div>
+  <div style="margin-top: 10px;">
+    <label>Group ID: </label>
+    <input id="groupId" type="text" placeholder="e.g., group123">
+    <button onclick="joinGroup()">Join Group</button>
+  </div>
+  <div id="chat"></div>
+  <input id="messageInput" type="text" placeholder="Type a message">
+  <button onclick="sendMessage()">Send</button>
+
+  <script>
+    let socket;
+    let token = '';
+
+    function login() {
+      const employeeId = document.getElementById('employeeId').value;
+      if (!employeeId) {
+        alert('Please enter Employee ID');
+        return;
+      }
+
+      // Simulate login by fetching token (replace with your actual login endpoint)
+      fetch('http://localhost:3000/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId, password: 'test123' }) // Adjust password as needed
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.token) {
+            token = data.token;
+            localStorage.setItem('token', token);
+            connectWebSocket();
+            addToChat('System', 'Logged in successfully');
+          } else {
+            alert('Login failed');
+          }
+        })
+        .catch(err => {
+          console.error('Login error:', err);
+          alert('Login error');
+        });
+    }
+
+    function connectWebSocket() {
+      socket = io('http://localhost:3000', {
+        auth: { token }
+      });
+
+      socket.on('connect', () => {
+        addToChat('System', 'Connected to WebSocket');
+      });
+
+      socket.on('message', (data) => {
+        addToChat(data.sender || 'Unknown', data.text);
+      });
+
+      socket.on('connect_error', (err) => {
+        addToChat('System', `Connection error: ${err.message}`);
+      });
+    }
+
+    function joinGroup() {
+      const groupId = document.getElementById('groupId').value;
+      if (!groupId || !socket) {
+        alert('Please login and enter Group ID');
+        return;
+      }
+      socket.emit('joinGroup', { groupId });
+      addToChat('System', `Joined group ${groupId}`);
+    }
+
+    function sendMessage() {
+      const groupId = document.getElementById('groupId').value;
+      const text = document.getElementById('messageInput').value;
+      if (!text || !groupId || !socket) {
+        alert('Please login, join a group, and enter a message');
+        return;
+      }
+      socket.emit('groupMessage', { groupId, text });
+      addToChat('You', text);
+      document.getElementById('messageInput').value = '';
+    }
+
+    function addToChat(sender, message) {
+      const chat = document.getElementById('chat');
+      const msg = document.createElement('div');
+      msg.textContent = `${sender}: ${message}`;
+      chat.appendChild(msg);
+      chat.scrollTop = chat.scrollHeight;
+    }
+  </script>
+</body>
+</html>

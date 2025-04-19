@@ -18,6 +18,7 @@ func RegisterChatRoutes(router *gin.Engine, chatUsecase usecase.ChatUsecase, aut
 		chatGroup.POST("/personal", handler.SendPersonalMessage)
 		chatGroup.POST("/group", handler.SendGroupMessage)
 		chatGroup.POST("/voice", handler.SendVoiceMessage)
+		chatGroup.GET("/history", handler.GetMessageHistory)
 	}
 
 }
@@ -143,3 +144,13 @@ func RegisterUserRoutes(router *gin.Engine, userUsecase usecase.UserUsecase, aut
 		userGroupProtected.POST("/employee", adminMiddleware, handler.CreateEmployeeID)
 	}
 }
+
+// func RegisterMessageRoutes(router *gin.Engine, messageUsecase usecase.MessageUsecase, authService usecase.AuthService, redisService usecase.RedisService) {
+// 	handler := handler.NewMessageHandler(messageUsecase)
+// 	authMiddleware := middleware.AuthMiddleware(authService, redisService)
+
+// 	messageGroup := router.Group("/messages", authMiddleware)
+// 	{
+// 		messageGroup.GET("/history", handler.GetMessageHistory)
+// 	}
+// }
