@@ -19,6 +19,7 @@ func RegisterChatRoutes(router *gin.Engine, chatUsecase usecase.ChatUsecase, aut
 		chatGroup.POST("/group", handler.SendGroupMessage)
 		chatGroup.POST("/voice", handler.SendVoiceMessage)
 		chatGroup.GET("/history", handler.GetMessageHistory)
+
 	}
 
 }
