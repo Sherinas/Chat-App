@@ -412,6 +412,8 @@ func (u *UserUsecase) UpdateUser(token string, userID int, user *domain.User) er
 }
 
 func (u *UserUsecase) SetUserState(userID int, state string) error {
+
+	fmt.Println("------------")
 	err := u.userRepo.UpdateStatus(userID, state)
 	if err != nil {
 		return err

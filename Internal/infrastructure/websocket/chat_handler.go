@@ -1,280 +1,8 @@
-// package websocket
-
-// import (
-// 	"encoding/json"
-// 	"log"
-// 	"net/http"
-// 	"strconv"
-
-// 	"github.com/Sherinas/Chat-App-Clean/Internal/usecase"
-// 	"github.com/gorilla/websocket"
-// )
-
-// var upgrader = websocket.Upgrader{
-// 	ReadBufferSize:  1024,
-// 	WriteBufferSize: 1024,
-// 	CheckOrigin:     func(r *http.Request) bool { return true }, // Tighten in production
-// }
-
-// type ChatWebSocketHandler struct {
-// 	chatUsecase  usecase.ChatUsecase
-// 	redisService usecase.RedisService
-// }
-
-// func NewChatWebSocketHandler(chatUsecase usecase.ChatUsecase, redisService usecase.RedisService) *ChatWebSocketHandler {
-// 	return &ChatWebSocketHandler{
-// 		chatUsecase:  chatUsecase,
-// 		redisService: redisService,
-// 	}
-// }
-
-// // func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request) {
-// // 	// Upgrade to WebSocket
-// // 	conn, err := upgrader.Upgrade(w, r, nil)
-// // 	if err != nil {
-// // 		log.Printf("WebSocket upgrade failed: %v", err)
-// // 		return
-// // 	}
-// // 	defer conn.Close()
-
-// // 	log.Printf("http upgraded to ws")
-
-// // 	// Validate token
-// // 	token := r.URL.Query().Get("token")
-// // 	if token == "" {
-// // 		conn.WriteJSON(map[string]string{"error": "missing token"})
-// // 		return
-// // 	}
-// // 	userID, _, err := h.chatUsecase.ValidateTokenWithRedis(token)
-// // 	if err != nil {
-// // 		conn.WriteJSON(map[string]string{"error": "invalid token: " + err.Error()})
-// // 		return
-// // 	}
-// // 	log.Printf("User %d connected with token", userID)
-
-// // 	// Determine subscription channels
-// // 	// groupIDStr := r.URL.Query().Get("group_id")
-// // 	groupIDStr := "5"
-// // 	log.Printf("%T", groupIDStr)
-// // 	log.Println("g----------------------------------------------------------p---", groupIDStr)
-// // 	var channels []string
-// // 	if groupIDStr != "" {
-// // 		groupID, err := strconv.Atoi(groupIDStr)
-// // 		if err != nil {
-// // 			conn.WriteJSON(map[string]string{"error": "invalid group_id"})
-// // 			return
-// // 		}
-// // 		channels = []string{"group:" + strconv.Itoa(groupID), "user:" + strconv.Itoa(userID)}
-// // 		log.Printf("Subscribing user %d to channels: %v", userID, channels)
-// // 	} else {
-// // 		channels = []string{"user:" + strconv.Itoa(userID)}
-// // 		log.Println("HELLOOOOOOOO,ELSE")
-// // 	}
-
-// // 	// Subscribe to Redis channels
-// // 	msgChan, err := h.redisService.SubscribeToMultipleChannels(channels)
-
-// // 	log.Println("............................", msgChan)
-// // 	if err != nil {
-// // 		conn.WriteJSON(map[string]string{"error": "subscription failed: " + err.Error()})
-// // 		return
-// // 	}
-
-// // 	// Handle client messages and Redis events concurrently
-// // 	done := make(chan struct{})
-// // 	go func() {
-// // 		defer close(done)
-// // 		for {
-// // 			// Read client messages
-// // 			_, clientMsg, err := conn.ReadMessage()
-// // 			log.Println("read---------", string(clientMsg))
-// // 			if err != nil {
-// // 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-// // 					log.Printf("WebSocket read error for user %d: %v", userID, err)
-// // 				}
-// // 				return
-// // 			}
-
-// // 			type clientRequest struct {
-// // 				Type       string `json:"type"` // Fixed from "targetType"
-// // 				ReceiverID int    `json:"targetId,omitempty"`
-// // 				GroupID    int    `json:"group_id,omitempty"`
-// // 				Content    string `json:"content"`
-// // 				SenderID   int    `json:"sender_id,omitempty"` // Add for validation
-// // 			}
-// // 			var req clientRequest
-
-// // 			if err := json.Unmarshal(clientMsg, &req); err != nil {
-// // 				conn.WriteJSON(map[string]string{"error": "invalid message format"})
-// // 				continue
-// // 			}
-
-// // 			log.Println("reww==", token, req.GroupID, req.Content)
-// // 			log.Println("req--", req)
-// // 			if req.SenderID == 0 {
-// // 				req.SenderID = userID // Default to authenticated userID
-// // 			} else if req.SenderID != userID {
-// // 				conn.WriteJSON(map[string]string{"error": "sender_id mismatch"})
-// // 				continue
-// // 			}
-
-// // 			switch req.Type {
-// // 			case "personal_message":
-// // 				if err := h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content); err != nil {
-// // 					conn.WriteJSON(map[string]string{"error": "failed to send personal message: " + err.Error()})
-// // 				}
-// // 			case "group_message":
-// // 				if err := h.chatUsecase.SendGroupMessage(token, req.GroupID, req.Content); err != nil {
-// // 					conn.WriteJSON(map[string]string{"error": "failed to send group message: " + err.Error()})
-// // 				}
-// // 			case "voice_message":
-// // 				var receiverID, groupID *int
-// // 				if req.ReceiverID != 0 {
-// // 					receiverID = &req.ReceiverID
-// // 				}
-// // 				if req.GroupID != 0 {
-// // 					groupID = &req.GroupID
-// // 				}
-// // 				if err := h.chatUsecase.SendVoiceMessage(token, receiverID, groupID, req.Content); err != nil {
-// // 					conn.WriteJSON(map[string]string{"error": "failed to send voice message: " + err.Error()})
-// // 				}
-// // 			default:
-// // 				conn.WriteJSON(map[string]string{"error": "unknown message type"})
-// // 			}
-// // 		}
-// // 	}()
-
-// // 	for {
-// // 		select {
-// // 		case msg, ok := <-msgChan:
-// // 			if !ok {
-// // 				log.Printf("Redis channel closed for user %d", userID)
-// // 				return
-// // 			}
-// // 			log.Printf("Received from Redis for user %d: %s", userID, msg)
-// // 			if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
-// // 				log.Printf("WebSocket write error for user %d: %v", userID, err)
-// // 				return
-// // 			}
-// // 		case <-done:
-// // 			return
-// // 		}
-// // 	}
-// // }
-// //------------------down working
-// func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request) {
-// 	conn, err := upgrader.Upgrade(w, r, nil)
-// 	if err != nil {
-// 		log.Printf("WebSocket upgrade failed: %v", err)
-// 		return
-// 	}
-// 	defer conn.Close()
-
-// 	log.Printf("http upgraded to ws")
-
-// 	token := r.URL.Query().Get("token")
-// 	if token == "" {
-// 		conn.WriteJSON(map[string]string{"error": "missing token"})
-// 		return
-// 	}
-// 	userID, _, err := h.chatUsecase.ValidateTokenWithRedis(token)
-// 	if err != nil {
-// 		conn.WriteJSON(map[string]string{"error": "invalid token: " + err.Error()})
-// 		return
-// 	}
-// 	log.Printf("User %d connected with token", userID)
-
-// 	// Subscribe to channels (existing logic)
-// 	groupIDStr := "5" // Hardcoded for now
-// 	channels := []string{"group:" + groupIDStr, "user:" + strconv.Itoa(userID)}
-// 	log.Printf("Subscribing user %d to channels: %v", userID, channels)
-// 	msgChan, err := h.redisService.SubscribeToMultipleChannels(channels)
-// 	if err != nil {
-// 		conn.WriteJSON(map[string]string{"error": "subscription failed: " + err.Error()})
-// 		return
-// 	}
-
-// 	// Handle messages
-// 	done := make(chan struct{})
-// 	go func() {
-// 		defer close(done)
-// 		for {
-// 			_, clientMsg, err := conn.ReadMessage()
-// 			log.Println("read---------", string(clientMsg))
-// 			if err != nil {
-// 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-// 					log.Printf("WebSocket read error for user %d: %v", userID, err)
-// 				}
-// 				return
-// 			}
-
-// 			var req struct {
-// 				Type       string `json:"type"`
-// 				ReceiverID int    `json:"receiver_id,omitempty"`
-// 				GroupID    int    `json:"group_id,omitempty"`
-// 				Content    string `json:"content"`
-// 				SenderID   int    `json:"sender_id,omitempty"`
-// 				Filename   string `json:"filename,omitempty"`
-// 				Filetype   string `json:"filetype,omitempty"`
-// 			}
-// 			if err := json.Unmarshal(clientMsg, &req); err != nil {
-// 				conn.WriteJSON(map[string]string{"error": "invalid message format"})
-// 				continue
-// 			}
-
-// 			if req.SenderID == 0 {
-// 				req.SenderID = userID
-// 			} else if req.SenderID != userID {
-// 				conn.WriteJSON(map[string]string{"error": "sender_id mismatch"})
-// 				continue
-// 			}
-
-// 			switch req.Type {
-// 			case "personal_message", "group_message":
-// 				if err := h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content); err != nil {
-// 					conn.WriteJSON(map[string]string{"error": "failed to send message: " + err.Error()})
-// 				}
-// 			case "audio_message", "file_message":
-// 				if req.GroupID == 0 && req.ReceiverID == 0 {
-// 					conn.WriteJSON(map[string]string{"error": "group_id or receiver_id required"})
-// 					continue
-// 				}
-// 				if err := h.chatUsecase.SendMultimediaMessage(token, req.ReceiverID, req.GroupID, req.Content, req.Filename, req.Filetype, req.Type); err != nil {
-// 					conn.WriteJSON(map[string]string{"error": "failed to send multimedia: " + err.Error()})
-// 				}
-// 			default:
-// 				conn.WriteJSON(map[string]string{"error": "unknown message type"})
-// 			}
-// 		}
-// 	}()
-
-// 	// Subscribe loop (existing)
-// 	for {
-// 		select {
-// 		case msg, ok := <-msgChan:
-// 			if !ok {
-// 				log.Printf("Redis channel closed for user %d", userID)
-// 				return
-// 			}
-// 			log.Printf("Received from Redis for user %d: %s", userID, msg)
-// 			if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
-// 				log.Printf("WebSocket write error for user %d: %v", userID, err)
-// 				return
-// 			}
-// 		case <-done:
-// 			return
-// 		}
-// 	}
-// }
-
-//	func RegisterWebSocketRoute(mux *http.ServeMux, chatUsecase usecase.ChatUsecase, redisService usecase.RedisService) {
-//		handler := NewChatWebSocketHandler(chatUsecase, redisService)
-//		mux.HandleFunc("/ws/chat", handler.HandleChat)
-//	}
 package websocket
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -332,7 +60,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	log.Println("????????????????????????????????????????????????????????????????????????????", groupIDStr)
 
 	var channels []string
-	if groupIDStr != "" {
+	if groupIDStr != "" && groupIDStr != "5" {
 		groupID, err := strconv.Atoi(groupIDStr)
 		if err != nil {
 			conn.WriteJSON(map[string]string{"error": "invalid group_id"})
@@ -349,12 +77,13 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	}
 
 	// Subscribe to Redis channels
+	fmt.Println("working 111")
 	msgChan, err := h.redisService.SubscribeToMultipleChannels(channels)
 	if err != nil {
 		conn.WriteJSON(map[string]string{"error": "subscription failed: " + err.Error()})
 		return
 	}
-
+	fmt.Println("working 122", msgChan)
 	// Notify online status and fetch unread messages
 	if err := h.useruse.SetUserState(userID, "online"); err != nil {
 		log.Printf("Failed to update status for user %d: %v", userID, err)
@@ -396,7 +125,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 				ForwardTo  *int    `json:"forward_to,omitempty"` // For forward functionality
 			}
 			if err := json.Unmarshal(clientMsg, &req); err != nil {
-				log.Println("Received message:", string(clientMsg))
+				log.Println("Received message:...............1", string(clientMsg))
 				conn.WriteJSON(map[string]string{"error": "invalid message format"})
 				continue
 			}
@@ -417,7 +146,9 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 					messageID, err = h.chatUsecase.SendPersonalMessage(token, req.ReceiverID, req.Content)
 
 				} else {
-					err = h.chatUsecase.SendGroupMessage(token, req.GroupID, req.Content)
+					messageID, err = h.chatUsecase.SendGroupMessage(token, req.GroupID, req.Content)
+
+					log.Println("done")
 				}
 				if err != nil {
 					conn.WriteJSON(map[string]string{"error": "failed to send message: " + err.Error()})
@@ -494,42 +225,114 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	}()
 
 	// Handle Redis messages
+
+	log.Println("Starting WebSocket listener loop for user", userID)
+
+	if msgChan == nil {
+		log.Println("DEBUG: msgChan is nil!")
+	}
+
+	if done == nil {
+		log.Println("DEBUG: done channel is nil!")
+	}
+
 	for {
 		select {
 		case msg, ok := <-msgChan:
+			log.Println("DEBUG: Entered msgChan case")
 
 			if !ok {
-				log.Printf("Redis channel closed for user %d", userID)
+				log.Printf("DEBUG: msgChan closed for user %d", userID)
 				return
 			}
-			log.Printf("Received from Redis for user %d: %s", userID, msg)
+
+			log.Printf("DEBUG: Raw message from Redis for user %d: %s", userID, msg)
+
 			var data map[string]interface{}
 			if err := json.Unmarshal([]byte(msg), &data); err != nil {
-				log.Printf("Failed to unmarshal Redis message: %v", err)
+				log.Printf("DEBUG: Failed to unmarshal message: %v", err)
 				continue
 			}
 
-			// Handle status updates (e.g., delivered, seen)
+			log.Printf("DEBUG: Unmarshalled JSON: %#v", data)
+
 			if status, ok := data["status"].(string); ok {
-				if status == "delivered" || status == "seen" {
+				log.Printf("DEBUG: Message is a status update: %s", status)
+
+				if status == "sent" || status == "seen" || status == "delivered" {
 					if err := conn.WriteJSON(data); err != nil {
-						log.Printf("Failed to send status update to user %d: %v", userID, err)
+						log.Printf("ERROR: Failed to send status update to user %d: %v", userID, err)
+					} else {
+						log.Printf("DEBUG: Sent status update to user %d", userID)
 					}
+				} else {
+					log.Println("DEBUG: Status is not a handled type")
 				}
 			} else {
-				// Broadcast new messages as notifications
+				log.Println("DEBUG: No status field, treating as a message")
+
 				if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
-					log.Printf("WebSocket write error for user %d: %v", userID, err)
+					log.Printf("ERROR: Failed to send message to user %d: %v", userID, err)
 					return
+				} else {
+					log.Printf("DEBUG: Sent message to user %d", userID)
 				}
 			}
+
 		case <-done:
+			log.Println("DEBUG: Received signal from done channel")
+
 			if err := h.useruse.SetUserState(userID, "offline"); err != nil {
-				log.Printf("Failed to update offline status for user %d: %v", userID, err)
+				log.Printf("ERROR: Failed to update offline status for user %d: %v", userID, err)
+			} else {
+				log.Printf("DEBUG: Updated user %d to offline", userID)
 			}
 			return
 		}
 	}
+
+	// for {
+	// 	select {
+	// 	case msg, ok := <-msgChan:
+
+	// 		log.Println("============", msg)
+
+	// 		if !ok {
+	// 			log.Printf("Redis channel closed for user %d", userID)
+	// 			return
+	// 		}
+	// 		log.Printf("Received from Redis for---- user %d: %s", userID, msg)
+	// 		var data map[string]interface{}
+	// 		if err := json.Unmarshal([]byte(msg), &data); err != nil {
+	// 			log.Printf("Failed to unmarshal Redis message: %v", err)
+	// 			continue
+	// 		}
+
+	// 		// Handle status updates (e.g., delivered, seen)
+	// 		log.Println("sttissssssssssssssssssssssss")
+	// 		if status, ok := data["status"].(string); ok {
+	// 			log.Println("dddata..........................................", status)
+	// 			if status == "sent" || status == "seen" || status == "delivered" {
+
+	// 				if err := conn.WriteJSON(data); err != nil {
+	// 					log.Printf("Failed to send status update to user %d: %v", userID, err)
+	// 				}
+	// 			}
+	// 		} else {
+	// 			log.Println("sttisssssssssssssssssssssss............s")
+	// 			// Broadcast new messages as notifications
+	// 			if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+	// 				log.Printf("WebSocket write error for user %d: %v", userID, err)
+	// 				return
+	// 			}
+	// 		}
+	// 	case <-done:
+	// 		if err := h.useruse.SetUserState(userID, "offline"); err != nil {
+	// 			log.Printf("Failed to update offline status for user %d: %v", userID, err)
+	// 		}
+	// 		return
+	// 	}
+	// }
 }
 
 func RegisterWebSocketRoute(mux *http.ServeMux, chatUsecase usecase.ChatUsecase, redisService usecase.RedisService, useruse usecase.UserUsecase) {

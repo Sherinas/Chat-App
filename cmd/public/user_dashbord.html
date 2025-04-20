@@ -316,6 +316,7 @@
     const forwardList = document.getElementById('forwardList');
     const logoutBtn = document.getElementById('logoutBtn');
     const notificationBadge = document.getElementById('notificationBadge');
+    const chatSelector = document.getElementById('chatSelector');
 
     // Global Variables
     let ws;
@@ -324,6 +325,8 @@
     const userMap = new Map();
     let mediaRecorder;
     let audioChunks = [];
+    const displayedMessages = new Map();
+    
     let unreadMessages = new Set(); // Track unread messages
 
     // Initialize on Page Load
@@ -333,21 +336,23 @@
         const savedPhoto = localStorage.getItem('profilePhoto');
         if (savedPhoto) {
             sidebarProfilePhoto.src = savedPhoto;
-            sidebarProfilePhoto.onerror = () => { sidebarProfilePhoto.src = 'https://via.placeholder.com/48'; };
+           sidebarProfilePhoto.onerror = () => { sidebarProfilePhoto.src = 'https://via.placeholder.com/48'; };
         } else {
             console.log('No profile photo in localStorage');
         }
-        connectWebSocket();
+      
+        const initialGroupId = 5; // Known group ID
+        const initialGroupName = 'Tech support team';
+        setActiveChat('group', initialGroupId, initialGroupName, initialGroupId === 5 ? 10 : 0); // Example member count
+    //    fetchMessageHistory(initialGroupId, 'group'); // Load initial history
+        console.log('Initialization complete, activeChat:', activeChat);
+
+        connectWebSocket(initialGroupId);
         logUserDetails();
         loadMockData();
         displayNotifications(mockNotifications);
         setupSearch();
         populateEmojis();
-        const initialGroupId = 5; // Known group ID
-        const initialGroupName = 'Tech support team';
-        setActiveChat('group', initialGroupId, initialGroupName, initialGroupId === 5 ? 10 : 0); // Example member count
-        fetchMessageHistory(initialGroupId, 'group'); // Load initial history
-        console.log('Initialization complete, activeChat:', activeChat);
     });
 
     // Log User Details for Debugging
@@ -370,69 +375,144 @@
     });
 
     // WebSocket Connection
-    function connectWebSocket() {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            console.log('WebSocket already connected');
-            return;
-        }
-        const token = localStorage.getItem('token');
-        const userId = localStorage.getItem('user_id');
-        console.log('Connecting WebSocket - Token:', token, 'User ID:', userId);
-        if (!token || !userId) {
-            console.warn('No token or user ID found. Using mock data or requiring login.');
-            loadMockData();
-            return;
-        }
-        ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
+    // function connectWebSocket(groupId) {
+    //     if (ws && ws.readyState === WebSocket.OPEN) {
+    //         console.log('WebSocket already connected');
+    //         return;
+    //     }
+    //     const token = localStorage.getItem('token');
+    //     const userId = localStorage.getItem('user_id');
+    //     console.log('Connecting WebSocket - Token:', token, 'User ID:', userId);
+    //     if (!token || !userId) {
+    //         console.warn('No token or user ID found. Using mock data or requiring login.');
+    //         loadMockData();
+    //         return;
+    //     }
+        
+    //     // ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${token}`);
+    //     let wsUrl = `ws://localhost:8081/ws/chat?token=${token}&user_id=${userId}`;
+    //     if (groupId) {
+    //         wsUrl += `&group_id=${groupId}`;
+    //     }
 
-        ws.onopen = () => {
-            console.log('WebSocket opened for User:', userId);
-            fetchUserDetails();
-            fetchOnlineUsers();
-            fetchUserGroups();
-            sendStatusUpdate(true); // Set status to online
-        };
+    //     const w = new WebSocket(wsUrl);
+            
+     
+    //     w.onopen = () => {
+    //         console.log('WebSocket opened for User:', userId);
+    //         fetchUserDetails();
+    //         fetchOnlineUsers();
+    //         fetchUserGroups();
+    //         sendStatusUpdate(true); // Set status to online
+    //     };
 
-        ws.onmessage = (event) => {
-            console.log('Raw WebSocket data received:', event.data);
-            try {
-                const message = JSON.parse(event.data);
-                console.log('Parsed message:', message);
-                if (message.error) {
-                    console.error('WebSocket error:', message.error);
-                    return;
-                }
-                const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
-                if (message.sender_id !== currentUserId) {
-                    unreadMessages.add(JSON.stringify(message)); // Add to unread
-                    updateNotificationBadge();
-                }
-                if (message.sender_id === currentUserId && message.status === 'sent') {
-                    message.status = 'delivered'; // Update to delivered locally
-                }
-                displayMessage(message);
-            } catch (err) {
-                console.error('Error parsing WebSocket message:', err, 'Raw data:', event.data);
-            }
-        };
+    //     w.onmessage = (event) => {
+    //         console.log('Raw WebSocket data received:', event.data);
+    //         try {
+    //             const message = JSON.parse(event.data);
+    //             console.log('Parsed message:', message);
+    //             if (message.error) {
+    //                 console.error('WebSocket error:', message.error);
+    //                 return;
+    //             }
+    //             const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+    //             if (message.sender_id !== currentUserId) {
+    //                 unreadMessages.add(JSON.stringify(message)); // Add to unread
+    //                 updateNotificationBadge();
+    //             }
+    //             if (message.sender_id === currentUserId && message.status === 'sent') {
+    //                 message.status = 'delivered'; // Update to delivered locally
+    //             }
+    //             displayMessage(message);
+    //         } catch (err) {
+    //             console.error('Error parsing WebSocket message:', err, 'Raw data:', event.data);
+    //         }
+    //     };
 
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
+    //     w.onerror = (error) => {
+    //         console.error('WebSocket error:', error);
+    //     };
 
-        ws.onclose = () => {
-            console.log('WebSocket closed, reconnecting...');
-            setTimeout(connectWebSocket, 3000);
-        };
+    //     w.onclose = () => {
+    //         console.log('WebSocket closed, reconnecting...');
+    //         setTimeout(connectWebSocket, 3000);
+    //     };
+    // }
+    function connectWebSocket(groupId) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('WebSocket already connected');
+        return;
     }
 
-    function setActiveChat(chatType, chatId, chatName, extraInfo) {
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('user_id');
+    console.log('Connecting WebSocket - Token:', token, 'User ID:', userId);
+
+    if (!token || !userId) {
+        console.warn('No token or user ID found. Using mock data or requiring login.');
+        loadMockData();
+        return;
+    }
+
+    let wsUrl = `ws://localhost:8081/ws/chat?token=${token}&user_id=${userId}`;
+    if (groupId) {
+        wsUrl += `&group_id=${groupId}`;
+    }
+
+    ws = new WebSocket(wsUrl); // ✅ FIXED: Assign to global `ws`
+
+    ws.onopen = () => {
+        console.log('WebSocket opened for User:', userId);
+        fetchUserDetails();
+        fetchOnlineUsers();
+        fetchUserGroups();
+        sendStatusUpdate(true);
+    };
+
+    ws.onmessage = (event) => {
+        console.log('Raw WebSocket data received:', event.data);
+        try {
+            const message = JSON.parse(event.data);
+            console.log('Parsed message:', message);
+            if (message.error) {
+                console.log('error.....................................');
+                console.error('WebSocket error:', message.error);
+                return;
+            }
+            const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+            if (message.sender_id !== currentUserId) {
+                console.log('working...1');
+                unreadMessages.add(JSON.stringify(message));
+                updateNotificationBadge();
+            }
+            if (message.sender_id === currentUserId && message.status === 'sent') {
+                console.log('working...2');
+                message.status = 'delivered';
+            }
+            console.log('working...3');
+            displayMessage(message);
+        } catch (err) {
+            console.error('Error parsing WebSocket message:', err, 'Raw data:', event.data);
+        }
+    };
+
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+        console.log('WebSocket closed, reconnecting...');
+        setTimeout(() => connectWebSocket(groupId), 3000);
+    };
+}
+
+function setActiveChat(chatType, chatId, chatName, extraInfo) {
         activeChat = { type: chatType, id: chatId, name: chatName };
         console.log('Active chat set to:', activeChat, 'Extra Info:', extraInfo);
         chatHeader.textContent = chatName || 'Unknown Chat';
         chatSubHeader.textContent = chatType === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo || 0} members`;
         chatArea.innerHTML = ''; // Clear chat area before loading history
-        fetchMessageHistory(chatId, chatType); // Load message history
+    //    fetchMessageHistory(chatId, chatType); // Load message history//......................
         markMessagesAsSeen(chatId, chatType); // Mark messages as seen
         logUserDetails();
         if (chatType === 'group' && ws) {
@@ -516,7 +596,7 @@
             }
         } catch (err) {
             console.error('Error fetching user groups:', err);
-            displayUserGroups(mockGroups);
+            //displayUserGroups(mockGroups);
         }
     }
 
@@ -555,47 +635,52 @@
         console.log('User groups displayed:', groups.length);
     }
 
-    // Fetch Message History
-    async function fetchMessageHistory(chatId, chatType) {
-        const token = localStorage.getItem('token');
-        if (!token || !activeChat) {
-            console.log('No token or active chat, skipping history fetch');
-            return;
-        }
-        try {
-            let url = `http://localhost:8080/chat/history?type=${chatType}`;
-        if (chatType === 'user') {
-            url += `&user_id=${userId}&receiver_id=${chatId}`; // Fetch between userId and chatId
-        } else if (chatType === 'group') {
-            url += `&group_id=${chatId}`;
-        }
-        const res = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-            if (res.ok) {
-                const messages = await res.json();
-                console.log('Fetched message history:', messages);
-                mockMessageHistory.set(`${chatType}:${chatId}`, messages);
+    // // Fetch Message History
+    // async function fetchMessageHistory(chatId, chatType) {
+    //     const token = localStorage.getItem('token');
+    //     if (!token || !activeChat) {
+    //         console.log('No token or active chat, skipping history fetch');
+    //         return;
+    //     }
+    //     try {
+    //         let url = `http://localhost:8080/chat/history?type=${chatType}`;
+    //     if (chatType === 'user') {
+
+    //         console.log("cllllllllll",userId,chatType,chatId)
+    //         url += `&user_id=${userId}&receiver_id=${chatId}`; // Fetch between userId and chatId
+    //     } else if (chatType === 'group') {
+    //         url += `&group_id=${chatId}`;
+    //     }
+
+
+        
+    //     const res = await fetch(url, {
+    //         headers: { 'Authorization': `Bearer ${token}` }
+    //     });
+    //         if (res.ok) {
+    //             const messages = await res.json();
+    //             console.log('Fetched message history:', messages);
+    //             mockMessageHistory.set(`${chatType}:${chatId}`, messages);
                 
-                messages.forEach(msg => displayMessage(msg));
+    //             messages.forEach(msg => displayMessage(msg));
 
 
-            } else {
-                console.error('Failed to fetch message history:', res.status);
-                const mockHistory = [
-                    { sender_id: 1, content: 'Hello!', created_at: '2025-04-10 10:00', status: 'seen', type: 'text', targetType: chatType, [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId },
-                    { sender_id: 2, content: 'Hi there!', created_at: '2025-04-10 10:05', status: 'delivered', type: 'text', targetType: chatType, [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId }
-                ];
-                mockMessageHistory.set(`${chatType}:${chatId}`, mockHistory);
-                mockHistory.forEach(msg => displayMessage(msg));
-            }
-        } catch (err) {
-            console.error('Error fetching message history:', err);
-        }
-    }
+    //         } else {
+    //             console.error('Failed to fetch message history:', res.status);
+    //             const mockHistory = [
+    //                 { sender_id: 1, content: 'Hello!', created_at: '2025-04-10 10:00', status: 'seen', type: 'text', targetType: chatType, [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId },
+    //                 { sender_id: 2, content: 'Hi there!', created_at: '2025-04-10 10:05', status: 'delivered', type: 'text', targetType: chatType, [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId }
+    //             ];
+    //             mockMessageHistory.set(`${chatType}:${chatId}`, mockHistory);
+    //             mockHistory.forEach(msg => displayMessage(msg));
+    //         }
+    //     } catch (err) {
+    //         console.error('Error fetching message history:', err);
+    //     }
+    // }
 
     // Display Message with Reply and Forward
-    const displayedMessages = new Map();
+    
     function displayMessage(message) {
         console.log('Displaying message:', message, 'Active chat:', activeChat);
         if (!activeChat || !activeChat.type || !activeChat.id) {
@@ -695,7 +780,7 @@
             sender_id: currentUserId,
             type: 'text',
             targetType: activeChat.type,
-            [activeChat.type === 'user' ? 'receiver_id' : 'activeChat.id'] : activeChat.id,
+            [activeChat.type === 'user' ? 'receiver_id' :  'group_id'] : activeChat.id,
             content: content,
             created_at: new Date().toISOString(),
             tempId: tempMessageId,

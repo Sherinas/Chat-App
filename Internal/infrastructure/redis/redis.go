@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -56,20 +57,31 @@ func (r *RedisService) PublishMessage(channel string, message string) error {
 }
 
 func (r *RedisService) SubscribeChannel(channel string) (<-chan string, error) {
-	pubsub := r.client.Subscribe(r.ctx, channel)
-	_, err := pubsub.Receive(r.ctx)
-	if err != nil {
-		return nil, err
+	log.Println("channel subscription started for", channel)
+	pubsub := r.client.Subscribe(context.Background(), channel)
+	if pubsub == nil {
+		return nil, fmt.Errorf("failed to create pubsub for channel %s", channel)
 	}
 
 	msgChan := make(chan string)
+
 	go func() {
-		defer pubsub.Close() // Clean up subscription
-		defer close(msgChan) // Close channel when done
+		defer pubsub.Close()
+		defer close(msgChan)
+		log.Println("Starting message reception for channel", channel)
 		for msg := range pubsub.Channel() {
+			log.Printf("Received raw message from %s: %s", channel, msg.Payload)
 			msgChan <- msg.Payload
 		}
+		log.Printf("Subscription closed for channel %s", channel)
 	}()
+
+	if err := pubsub.Ping(context.Background()); err != nil {
+		log.Printf("Ping failed for channel %s: %v", channel, err)
+		return nil, err
+	}
+	log.Println("Subscription confirmed for channel", channel)
+
 	return msgChan, nil
 }
 

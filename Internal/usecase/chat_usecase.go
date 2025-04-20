@@ -56,19 +56,19 @@ func (u *ChatUsecase) ValidateTokenWithRedis(token string) (int, string, error) 
 	return userID, role, nil
 }
 
-func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string) error {
+func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string) (int, error) {
 	senderID, _, err := u.ValidateTokenWithRedis(token)
 	if err != nil {
-		return fmt.Errorf("token validation failed: %w", err)
+		return 0, fmt.Errorf("token validation failed: %w", err)
 	}
 
 	if _, err := u.userRepo.FindByID(senderID); err != nil {
-		return fmt.Errorf("sender not found: %w", err)
+		return 0, fmt.Errorf("sender not found: %w", err)
 	}
 
 	group, err := u.groupRepo.FindByID(groupID)
 	if err != nil {
-		return fmt.Errorf("group not found: %w", err)
+		return 0, fmt.Errorf("group not found: %w", err)
 	}
 	inGroup := false
 	for _, member := range group.Members {
@@ -78,10 +78,10 @@ func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string
 		}
 	}
 	if !inGroup {
-		return errors.New("sender not in group")
+		return 0, errors.New("sender not in group")
 	}
 	if !group.Permission["can_send"] {
-		return errors.New("group does not allow sending messages")
+		return 0, errors.New("group does not allow sending messages")
 	}
 
 	message := &domain.Message{
@@ -89,9 +89,10 @@ func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string
 		GroupID:   &groupID,
 		Content:   content,
 		CreatedAt: time.Now(),
+		Status:    "sent",
 	}
 	if err := u.messageRepo.Create(message); err != nil {
-		return fmt.Errorf("failed to save message: %w", err)
+		return 0, fmt.Errorf("failed to save message: %w", err)
 	}
 
 	event := map[string]interface{}{
@@ -102,18 +103,19 @@ func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string
 		"sender_id":  senderID,
 		"content":    content,
 		"created_at": message.CreatedAt,
+		"status":     "sent",
 	}
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("Failed to marshal event: %v", err)
-		return fmt.Errorf("failed to marshal event: %w", err)
+		return message.ID, nil // Return ID even if marshal fails
 	}
 	if err := u.redisService.PublishMessage("group:"+strconv.Itoa(groupID), string(eventJSON)); err != nil {
 		log.Printf("Failed to publish message to %s: %v", "group:"+strconv.Itoa(groupID), err)
-		return fmt.Errorf("failed to publish message: %w", err)
+		return 0, fmt.Errorf("failed to publish message: %w", err)
 	}
 
-	return nil
+	return message.ID, nil
 }
 
 // func (u *ChatUsecase) SendGroupMessage(token string, groupID int, content string) error {
@@ -379,7 +381,7 @@ func (u *ChatUsecase) SendPersonalMessage(token string, receiverID int, content 
 		"status":      "sent",
 	}
 
-	log.Println(event)
+	log.Println("eventttt", event)
 	// eventJSON, err := json.Marshal(event)
 	// if err != nil {
 	// 	log.Printf("Failed to marshal event: %v", err)
@@ -401,6 +403,7 @@ func (u *ChatUsecase) SendPersonalMessage(token string, receiverID int, content 
 
 	return message.ID, nil
 }
+
 func (u *ChatUsecase) SendVoiceMessage(token string, receiverID, groupID *int, content string) (int, error) {
 
 	log.Println(token, receiverID, groupID, content)
@@ -1292,14 +1295,40 @@ func (u *ChatUsecase) ForwardMessage(token string, targetID int, content string)
 	event["targetType"] = targetType
 	return nil
 }
+
+// func (u *ChatUsecase) UpdateUserStatus(userID int, status string) error {
+// 	if err := u.userRepo.UpdateStatus(userID, status); err != nil {
+// 		return err
+// 	}
+// 	u.redisService.SetUserStatus(userID, status)
+// 	return nil
+// }
+
 func (u *ChatUsecase) UpdateUserStatus(userID int, status string) error {
 	if err := u.userRepo.UpdateStatus(userID, status); err != nil {
 		return err
 	}
-	u.redisService.SetUserStatus(userID, status)
+	// Prepare status event
+	statusEvent := map[string]interface{}{
+		"type":    "status_update",
+		"user_id": userID,
+		"status":  status,
+	}
+	statusJSON, err := json.Marshal(statusEvent)
+	if err != nil {
+		log.Printf("Failed to marshal status event for user %d: %v", userID, err)
+		return nil // Non-critical, proceed
+	}
+	// Publish to global status channel
+	if err := u.redisService.PublishMessage("status:all", string(statusJSON)); err != nil {
+		log.Printf("Failed to publish to status:all for user %d: %v", userID, err)
+	}
+	// Publish to user-specific channel
+	if err := u.redisService.PublishMessage("user:"+strconv.Itoa(userID), string(statusJSON)); err != nil {
+		log.Printf("Failed to publish to user:%d for user %d: %v", userID, userID, err)
+	}
 	return nil
 }
-
 func SaveAudioFile(content, filename, filetype string) (string, error) {
 	// Validate filetype (optional, for security)
 	validAudioTypes := map[string]bool{

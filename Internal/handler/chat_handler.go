@@ -52,7 +52,7 @@ func (h *ChatHandler) SendGroupMessage(c *gin.Context) {
 	}
 
 	token := c.GetHeader("Authorization")
-	err := h.chatUsecase.SendGroupMessage(token, req.GroupID, req.Content)
+	_, err := h.chatUsecase.SendGroupMessage(token, req.GroupID, req.Content)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -122,6 +122,7 @@ func (h *ChatHandler) GetMessageHistory(c *gin.Context) {
 	chatType := c.DefaultQuery("type", "user")
 	var chatIDStr string
 
+	log.Fatalln("*********** ", chatIDStr)
 	switch chatType {
 	case "user":
 		chatIDStr = c.Query("user_id")
