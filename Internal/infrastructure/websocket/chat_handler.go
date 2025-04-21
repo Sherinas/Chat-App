@@ -57,34 +57,60 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 	// Determine subscription channels dynamically
 	groupIDStr := r.URL.Query().Get("group_id")
 
-	log.Println("????????????????????????????????????????????????????????????????????????????", groupIDStr)
+	log.Println("getting group ID=", groupIDStr)
 
-	var channels []string
-	if groupIDStr != "" && groupIDStr != "5" {
+	//var channels []string
+	var initialChannels []string
+	if groupIDStr != "" {
 		groupID, err := strconv.Atoi(groupIDStr)
+
+		log.Println("getting group covert to int :=", groupIDStr)
 		if err != nil {
 			conn.WriteJSON(map[string]string{"error": "invalid group_id"})
 			return
 		}
-		channels = []string{"group:" + strconv.Itoa(groupID), "user:" + strconv.Itoa(userID)}
+		initialChannels = []string{fmt.Sprintf("group:%d", groupID), fmt.Sprintf("user:%d", userID)}
+		//channels = []string{"group:" + strconv.Itoa(groupID), "user:" + strconv.Itoa(userID)}
 
-		log.Printf("aaaaaaaaaaaaa%T", channels)
-		log.Printf("Subscribing user %d to channels: %v", userID, channels)
+		//log.Printf("Subscribing user %d to channels: %v", userID, channels)
 	} else {
-		channels = []string{"user:" + strconv.Itoa(userID)}
-		log.Printf("aaaaaaaaaaaaa%T", channels)
+		initialChannels = []string{fmt.Sprintf("user:%d", userID)}
+		//channels = []string{"user:" + strconv.Itoa(userID)}
+		//log.Printf("USERaaaaaaaaaa%T", channels)
 		log.Printf("Subscribing user %d to personal channel only", userID)
+	}
+
+	var msgChans []<-chan string
+	for _, ch := range initialChannels {
+		msgChan, err := h.redisService.SubscribeChannel(ch)
+		if err != nil {
+			log.Printf("Failed to subscribe to initial channel %s: %v", ch, err)
+			conn.WriteJSON(map[string]string{"error": "initial subscription failed: " + err.Error()})
+			return
+		}
+		msgChans = append(msgChans, msgChan)
 	}
 
 	// Subscribe to Redis channels
 	fmt.Println("working 111")
-	msgChan, err := h.redisService.SubscribeToMultipleChannels(channels)
-	if err != nil {
-		conn.WriteJSON(map[string]string{"error": "subscription failed: " + err.Error()})
-		return
-	}
-	fmt.Println("working 122", msgChan)
+
+	//msgChan, err := h.redisService.SubscribeToMultipleChannels(channels)
+	// if err != nil {
+	// 	conn.WriteJSON(map[string]string{"error": "subscription failed: " + err.Error()})
+	// 	return
+	// }
+	//	fmt.Println("working 122", msgChan)
 	// Notify online status and fetch unread messages
+
+	msgChan := make(chan string)
+	for _, ch := range msgChans {
+		go func(c <-chan string) {
+			for msg := range c {
+				msgChan <- msg
+			}
+		}(ch)
+	}
+
 	if err := h.useruse.SetUserState(userID, "online"); err != nil {
 		log.Printf("Failed to update status for user %d: %v", userID, err)
 	}
@@ -98,6 +124,26 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 			}
 		}
 	}
+	go func() {
+		log.Printf("Starting Redis listener goroutine for user %d", userID)
+		for msg := range msgChan {
+			log.Printf("Received from Redis for user %d on channels %v: %s", userID, initialChannels, msg)
+
+			var data map[string]interface{}
+			if err := json.Unmarshal([]byte(msg), &data); err != nil {
+				log.Printf("Failed to unmarshal Redis message for user %d: %v, raw: %s", userID, err, msg)
+				continue
+			}
+			log.Printf("Unmarshalled Redis message for user %d: %#v", userID, data)
+
+			if err := conn.WriteJSON(data); err != nil {
+				log.Printf("Failed to send Redis message to user %d: %v", userID, err)
+				continue
+			}
+			log.Printf("Successfully sent Redis message to user %d", userID)
+		}
+		log.Printf("Redis listener stopped for user %d", userID)
+	}()
 
 	// Handle client messages and Redis events concurrently
 	done := make(chan struct{})
@@ -153,6 +199,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 				if err != nil {
 					conn.WriteJSON(map[string]string{"error": "failed to send message: " + err.Error()})
 				}
+
 				// Update status to delivered after sending
 
 				log.Println("testttt", messageID)
@@ -161,6 +208,22 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 
 					log.Println("test1", req.ReceiverID, err)
 					h.chatUsecase.UpdateMessageStatus(messageID, "delivered")
+
+					newChannel := fmt.Sprintf("group:%d", req.GroupID)
+					if !contains(initialChannels, newChannel) {
+						log.Printf("Adding new subscription for channel %s", newChannel)
+						newMsgChan, err := h.redisService.SubscribeChannel(newChannel)
+						if err != nil {
+							log.Printf("Failed to subscribe to new channel %s: %v", newChannel, err)
+							continue
+						}
+						go func(c <-chan string) {
+							for msg := range c {
+								msgChan <- msg
+							}
+						}(newMsgChan)
+						initialChannels = append(initialChannels, newChannel)
+					}
 				}
 
 			case "audio_message", "image_message", "file_message":
@@ -226,7 +289,7 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 
 	// Handle Redis messages
 
-	log.Println("Starting WebSocket listener loop for user", userID)
+	log.Println("Starting WebSocket listener loop for user", userID, msgChan)
 
 	if msgChan == nil {
 		log.Println("DEBUG: msgChan is nil!")
@@ -338,4 +401,12 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 func RegisterWebSocketRoute(mux *http.ServeMux, chatUsecase usecase.ChatUsecase, redisService usecase.RedisService, useruse usecase.UserUsecase) {
 	handler := NewChatWebSocketHandler(chatUsecase, redisService, useruse)
 	mux.HandleFunc("/ws/chat", handler.HandleChat)
+}
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

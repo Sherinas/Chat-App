@@ -132,6 +132,9 @@ func (r *RedisService) BlacklistToken(token string, ttl time.Duration) error {
 }
 
 func (r *RedisService) SubscribeToMultipleChannels(channels []string) (<-chan string, error) {
+
+	log.Println("chchch", channels)
+
 	pubsub := r.client.Subscribe(context.Background(), channels...)
 	if err := pubsub.Ping(context.Background()); err != nil {
 		return nil, err
@@ -146,7 +149,11 @@ func (r *RedisService) SubscribeToMultipleChannels(channels []string) (<-chan st
 				close(msgChan)
 				return
 			}
+
 			msgChan <- msg.Payload
+
+			log.Println("++++", msgChan)
+
 		}
 	}()
 	return msgChan, nil
