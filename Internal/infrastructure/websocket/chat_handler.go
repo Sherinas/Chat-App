@@ -90,7 +90,10 @@ func (h *ChatWebSocketHandler) HandleChat(w http.ResponseWriter, r *http.Request
 		}
 		msgChans = append(msgChans, msgChan)
 	}
-
+	if len(msgChans) == 0 {
+		conn.WriteJSON(map[string]string{"error": "no valid subscriptions established"})
+		return
+	}
 	// Subscribe to Redis channels
 	fmt.Println("working 111")
 

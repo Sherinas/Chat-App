@@ -122,15 +122,18 @@ func (h *ChatHandler) GetMessageHistory(c *gin.Context) {
 	chatType := c.DefaultQuery("type", "user")
 	var chatIDStr string
 
-	log.Fatalln("*********** ", chatIDStr)
+	log.Println("*********** Processing chat type:", chatType)
+
 	switch chatType {
 	case "user":
 		chatIDStr = c.Query("user_id")
+		log.Println("User ID:", chatIDStr)
 		if chatIDStr == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required for user chat"})
 			return
 		}
 		receiverIDStr := c.Query("receiver_id")
+		log.Println("Receiver ID:", receiverIDStr)
 		if receiverIDStr == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "receiver_id is required for user chat"})
 			return
@@ -145,15 +148,18 @@ func (h *ChatHandler) GetMessageHistory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid receiver_id"})
 			return
 		}
-		// Pass both IDs to use case if needed, or handle in repository
+		// Fetch messages for user chat
 		messages, err := h.chatUsecase.GetMessageHistory(chatType, chatID, receiverID)
 		if err != nil {
+			log.Println("Error fetching user chat history:", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, messages)
+
 	case "group":
 		chatIDStr = c.Query("group_id")
+		log.Println("Group ID:", chatIDStr)
 		if chatIDStr == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "group_id is required for group chat"})
 			return
@@ -163,12 +169,26 @@ func (h *ChatHandler) GetMessageHistory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group_id"})
 			return
 		}
-		messages, err := h.chatUsecase.GetMessageHistory(chatType, chatID)
+		// Extract user ID from token for authorization
+		userID, exists := c.Get("user_id")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+			return
+		}
+		userIDInt, ok := userID.(int)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user ID type"})
+			return
+		}
+		// Fetch messages for group chat, passing user ID
+		messages, err := h.chatUsecase.GetMessageHistory(chatType, chatID, userIDInt)
 		if err != nil {
+			log.Println("Error fetching group chat history:", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, messages)
+
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid chat type, use 'user' or 'group'"})
 		return

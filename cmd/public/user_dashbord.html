@@ -5,131 +5,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ConnectSphere - Chat Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Custom background lines */
-        .background-lines {
-            position: absolute;
-            inset: 0;
-            overflow: hidden;
-            z-index: 0;
-        }
-        .line {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.1);
-            transform-origin: center;
-        }
-        .line-1 { width: 200%; height: 1px; top: 20%; left: -50%; transform: rotate(45deg); animation: moveLine1 10s linear infinite; }
-        .line-2 { width: 200%; height: 1px; bottom: 20%; left: -50%; transform: rotate(-45deg); animation: moveLine2 12s linear infinite; }
-        .line-3 { width: 1px; height: 200%; left: 30%; top: -50%; transform: rotate(30deg); animation: moveLine3 8s linear infinite; }
+   <style>
+    /* Existing styles remain unchanged until the relevant sections */
+    .background-lines {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        z-index: 0;
+    }
+    .line {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.1);
+        transform-origin: center;
+    }
+    .line-1 { width: 200%; height: 1px; top: 20%; left: -50%; transform: rotate(45deg); animation: moveLine1 10s linear infinite; }
+    .line-2 { width: 200%; height: 1px; bottom: 20%; left: -50%; transform: rotate(-45deg); animation: moveLine2 12s linear infinite; }
+    .line-3 { width: 1px; height: 200%; left: 30%; top: -50%; transform: rotate(30deg); animation: moveLine3 8s linear infinite; }
 
-        @keyframes moveLine1 { 0% { transform: rotate(45deg) translateX(-100%); } 100% { transform: rotate(45deg) translateX(100%); } }
-        @keyframes moveLine2 { 0% { transform: rotate(-45deg) translateX(100%); } 100% { transform: rotate(-45deg) translateX(-100%); } }
-        @keyframes moveLine3 { 0% { transform: rotate(30deg) translateY(-100%); } 100% { transform: rotate(30deg) translateY(100%); } }
+    @keyframes moveLine1 { 0% { transform: rotate(45deg) translateX(-100%); } 100% { transform: rotate(45deg) translateX(100%); } }
+    @keyframes moveLine2 { 0% { transform: rotate(-45deg) translateX(100%); } 100% { transform: rotate(-45deg) translateX(-100%); } }
+    @keyframes moveLine3 { 0% { transform: rotate(30deg) translateY(-100%); } 100% { transform: rotate(30deg) translateY(100%); } }
 
-        .logo-animation { animation: rotateFlip 4s ease-in-out infinite; }
-        @keyframes rotateFlip {
-            0% { transform: rotate(0deg) scaleX(1); } 25% { transform: rotate(90deg) scaleX(1); }
-            50% { transform: rotate(180deg) scaleX(-1); } 75% { transform: rotate(270deg) scaleX(-1); }
-            100% { transform: rotate(360deg) scaleX(1); }
-        }
+    .logo-animation { animation: rotateFlip 4s ease-in-out infinite; }
+    @keyframes rotateFlip {
+        0% { transform: rotate(0deg) scaleX(1); } 25% { transform: rotate(90deg) scaleX(1); }
+        50% { transform: rotate(180deg) scaleX(-1); } 75% { transform: rotate(270deg) scaleX(-1); }
+        100% { transform: rotate(360deg) scaleX(1); }
+    }
 
-        .chat-area::-webkit-scrollbar { width: 6px; }
-        .chat-area::-webkit-scrollbar-track { background: transparent; }
-        .chat-area::-webkit-scrollbar-thumb { background: #6b7280; border-radius: 3px; }
-        .chat-area::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    .chat-area::-webkit-scrollbar { width: 6px; }
+    .chat-area::-webkit-scrollbar-track { background: transparent; }
+    .chat-area::-webkit-scrollbar-thumb { background: #6b7280; border-radius: 3px; }
+    .chat-area::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-        .sidebar { transition: transform 0.3s ease-in-out; }
-        @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); position: fixed; z-index: 50; }
-            .sidebar.open { transform: translateX(0); }
-            .chat-area { margin-left: 0 !important; }
-            #chatAreaContainer { padding-bottom: 60px; } /* Ensure input bar is accessible on mobile */
-        }
+    .sidebar {
+        transition: transform 0.3s ease-in-out;
+        height: 100vh; /* Ensure sidebar takes full viewport height */
+        overflow-y: auto; /* Enable scrolling for the entire sidebar */
+        scrollbar-width: none; /* Firefox */
+    }
+    .sidebar::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
+    @media (max-width: 768px) {
+        .sidebar { transform: translateX(-100%); position: fixed; z-index: 50; }
+        .sidebar.open { transform: translateX(0); }
+        .chat-area { margin-left: 0 !important; }
+        #chatAreaContainer { padding-bottom: 60px; }
+    }
 
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background-color: #ef4444;
-            color: white;
-            border-radius: 9999px;
-            padding: 2px 6px;
-            font-size: 12px;
-            font-weight: bold;
-        }
+    .notification-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background-color: #ef4444;
+        color: white;
+        border-radius: 9999px;
+        padding: 2px 6px;
+        font-size: 12px;
+        font-weight: bold;
+    }
 
-        .message-bubble {
-            max-width: 60%;
-            display: inline-block;
-            padding: 8px 12px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            position: relative;
-        }
+    .message-bubble {
+        max-width: 60%;
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        position: relative;
+    }
 
-        .tick {
-            font-size: 12px;
-            color: #4fc3f7;
-            margin-left: 5px;
-        }
+    .tick {
+        font-size: 12px;
+        color: #4fc3f7;
+        margin-left: 5px;
+    }
 
-        .sent .tick {
-            position: absolute;
-            right: 8px;
-            bottom: 2px;
-        }
+    .sent .tick {
+        position: absolute;
+        right: 8px;
+        bottom: 2px;
+    }
 
-        .forward-btn {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            padding: 2px;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 50%;
-            display: none;
-        }
-        .message-bubble:hover .forward-btn { display: block; }
+    .forward-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        padding: 2px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        display: none;
+    }
+    .message-bubble:hover .forward-btn { display: block; }
 
-        /* Recording Animation */
-        .recording-animation {
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
+    /* Recording Animation */
+    .recording-animation {
+        animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
 
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 100;
-        }
-        .modal-content {
-            background-color: white;
-            margin: 15% auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-        .close {
-            float: right;
-            font-size: 24px;
-            cursor: pointer;
-        }
-        .emoji-modal-content { max-height: 300px; }
-    </style>
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 100;
+    }
+    .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 400px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .close {
+        float: right;
+        font-size: 24px;
+        cursor: pointer;
+    }
+    .emoji-modal-content { max-height: 300px; }
+
+    /* Adjusted Styles for Lists (optional, can be removed if sidebar scroll handles it) */
+    #onlineUsersList {
+        max-height: none; /* Remove fixed height to let sidebar handle scrolling */
+        overflow-y: visible; /* Ensure no independent scrolling */
+    }
+    #userGroupsList {
+        max-height: none; /* Remove fixed height to let sidebar handle scrolling */
+        overflow-y: visible; /* Ensure no independent scrolling */
+    }
+</style>
 </head>
 <body class="min-h-screen flex bg-gray-100">
     <!-- Background Lines -->
@@ -344,7 +362,7 @@
         const initialGroupId = 5; // Known group ID
         const initialGroupName = 'Tech support team';
         setActiveChat('group', initialGroupId, initialGroupName, initialGroupId === 5 ? 10 : 0); // Example member count
-    //    fetchMessageHistory(initialGroupId, 'group'); // Load initial history
+
         console.log('Initialization complete, activeChat:', activeChat);
 
         connectWebSocket(initialGroupId);
@@ -512,12 +530,13 @@ function setActiveChat(chatType, chatId, chatName, extraInfo) {
         chatHeader.textContent = chatName || 'Unknown Chat';
         chatSubHeader.textContent = chatType === 'user' ? (extraInfo === 'online' ? 'Online' : 'Offline') : `${extraInfo || 0} members`;
         chatArea.innerHTML = ''; // Clear chat area before loading history
-    //    fetchMessageHistory(chatId, chatType); // Load message history//......................
+        fetchAndDisplayChatHistory();
         markMessagesAsSeen(chatId, chatType); // Mark messages as seen
         logUserDetails();
         if (chatType === 'group' && ws) {
             connectWebSocket(); // Reconnect with group_id
         }
+       
     }
 
     // Load Mock Data
@@ -635,116 +654,152 @@ function setActiveChat(chatType, chatId, chatName, extraInfo) {
         console.log('User groups displayed:', groups.length);
     }
 
-    // // Fetch Message History
-    // async function fetchMessageHistory(chatId, chatType) {
-    //     const token = localStorage.getItem('token');
-    //     if (!token || !activeChat) {
-    //         console.log('No token or active chat, skipping history fetch');
-    //         return;
-    //     }
-    //     try {
-    //         let url = `http://localhost:8080/chat/history?type=${chatType}`;
-    //     if (chatType === 'user') {
 
-    //         console.log("cllllllllll",userId,chatType,chatId)
-    //         url += `&user_id=${userId}&receiver_id=${chatId}`; // Fetch between userId and chatId
-    //     } else if (chatType === 'group') {
-    //         url += `&group_id=${chatId}`;
-    //     }
+//     async function fetchAndDisplayChatHistory() {
+//     if (!activeChat || !activeChat.type || !activeChat.id) {
+//         console.log('No active chat to fetch history for');
+//         return;
+//     }
+//     const token = localStorage.getItem('token');
+//     if (!token) {
+//         console.warn('No token found, skipping history fetch');
+//         return;
+//     }
+//     const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+//     let url = `http://localhost:8080/chat/history?type=${activeChat.type}`;
+//     if (activeChat.type === 'user') {
+//         url += `&user_id=${currentUserId}&receiver_id=${activeChat.id}`;
+//     } else if (activeChat.type === 'group') {
+//         url += `&group_id=${activeChat.id}`;
+//     }
+//     console.log('Fetching chat history from:', url);
+//     try {
+//         const res = await fetch(url, {
+//             headers: { 'Authorization': `Bearer ${token}` }
+//         });
+//         if (res.ok) {
+//             const messages = await res.json();
+//             console.log('Fetched chat history:', messages);
+//             messages.forEach(message => displayMessage(message));
+//         } else {
+//             console.error('Failed to fetch chat history:', res.status);
+//         }
+//     } catch (err) {
+//         console.error('Error fetching chat history:', err);
+//     }    
+// }
+
+//----------------
+async function fetchAndDisplayChatHistory() {
+            if (!activeChat || !activeChat.type || !activeChat.id) {
+                console.log('No active chat to fetch history for');
+                return;
+            }
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.warn('No token found, skipping history fetch');
+                return;
+            }
+            const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+            let url = `http://localhost:8080/chat/history?type=${activeChat.type}`;
+            if (activeChat.type === 'user') {
+                url += `&user_id=${currentUserId}&receiver_id=${activeChat.id}`;
+            } else if (activeChat.type === 'group') {
+                url += `&group_id=${activeChat.id}`;
+            }
+            console.log('Fetching chat history from:', url);
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const messages = await res.json();
+                    console.log('Fetched chat history:', messages);
+                    // Sort messages from oldest to newest
+                    messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                    chatArea.innerHTML = ''; // Clear existing messages
+                    messages.forEach(message => {
+                        message.targetType = activeChat.type;
+                        if (activeChat.type === 'user') message.receiver_id = activeChat.id;
+                        else message.group_id = activeChat.id;
+                        if (!message.created_at) message.created_at = new Date().toISOString();
+                        displayMessage(message);
+                    });
+                    chatArea.scrollTop = chatArea.scrollHeight; // Scroll to latest message
+                } else {
+                    console.error('Failed to fetch chat history:', res.status);
+                }
+            } catch (err) {
+                console.error('Error fetching chat history:', err);
+            }
+        }
 
 
-        
-    //     const res = await fetch(url, {
-    //         headers: { 'Authorization': `Bearer ${token}` }
-    //     });
-    //         if (res.ok) {
-    //             const messages = await res.json();
-    //             console.log('Fetched message history:', messages);
-    //             mockMessageHistory.set(`${chatType}:${chatId}`, messages);
-                
-    //             messages.forEach(msg => displayMessage(msg));
-
-
-    //         } else {
-    //             console.error('Failed to fetch message history:', res.status);
-    //             const mockHistory = [
-    //                 { sender_id: 1, content: 'Hello!', created_at: '2025-04-10 10:00', status: 'seen', type: 'text', targetType: chatType, [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId },
-    //                 { sender_id: 2, content: 'Hi there!', created_at: '2025-04-10 10:05', status: 'delivered', type: 'text', targetType: chatType, [chatType === 'user' ? 'receiver_id' : 'group_id']: chatId }
-    //             ];
-    //             mockMessageHistory.set(`${chatType}:${chatId}`, mockHistory);
-    //             mockHistory.forEach(msg => displayMessage(msg));
-    //         }
-    //     } catch (err) {
-    //         console.error('Error fetching message history:', err);
-    //     }
-    // }
-
-    // Display Message with Reply and Forward
-    
     function displayMessage(message) {
-        console.log('Displaying message:', message, 'Active chat:', activeChat);
-        if (!activeChat || !activeChat.type || !activeChat.id) {
-            console.log('No active chat defined, skipping display');
-            return;
-        }
-        const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
-        console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id);
+    console.log('Displaying message:', message, 'Active chat:', activeChat);
+    if (!activeChat || !activeChat.type || !activeChat.id) {
+        console.log('No active chat defined, skipping display');
+        return;
+    }
+    const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+    console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id, 'Message Content:', message.content);
 
-        const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
-        if (displayedMessages.has(messageKey)) {
-            console.log('Duplicate message skipped:', messageKey);
-            return;
-        }
-        displayedMessages.set(messageKey, message);
+    const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
+    if (displayedMessages.has(messageKey)) {
+        console.log('Duplicate message skipped:', messageKey);
+        return;
+    }
+    displayedMessages.set(messageKey, message);
 
-        const isForActiveChat = 
-            (message.targetType === 'user' && activeChat.type === 'user' && 
-             (message.receiver_id === activeChat.id || message.sender_id === activeChat.id || message.sender_id === currentUserId)) ||
-            (message.targetType === 'group' && activeChat.type === 'group' && message.group_id === activeChat.id);
-        console.log('isForActiveChat:', isForActiveChat);
+    const isForActiveChat = 
+        (message.targetType === 'user' && activeChat.type === 'user' && 
+         (message.receiver_id === activeChat.id || message.sender_id === activeChat.id || message.sender_id === currentUserId)) ||
+        (message.targetType === 'group' && activeChat.type === 'group' && message.group_id === activeChat.id);
+    console.log('isForActiveChat:', isForActiveChat);
 
-        if (!isForActiveChat) {
-            console.log('Message not for active chat, skipping');
-            return;
-        }
-
-        const isSentByMe = message.sender_id === currentUserId;
-        const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
-        const status = message.status || 'sent';
-        let tickIcon = '';
-        if (isSentByMe) {
-            tickIcon = status === 'seen' ? '✓✓' : (status === 'delivered' ? '✓' : '');
-        }
-
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'} relative`;
-        let contentHTML = '';
-
-        if (message.type === 'text') {
-            contentHTML = message.content || '[Empty Message]';
-        } else if (message.type === 'audio_message') {
-            contentHTML = `<audio controls src="data:audio/webm;base64,${message.content || ''}"></audio>`;
-        } else if (message.type === 'file_message') {
-            contentHTML = `<a href="data:${message.filetype || 'application/octet-stream'};base64,${message.content || ''}" download="${message.filename || 'unknown_file'}" class="text-blue-500 underline">${message.filename || 'Unknown File'}</a>`;
-        }
-
-        messageDiv.innerHTML = `
-            <p class="text-gray-600 text-sm">${activeChat.type === 'group' ? senderName : (isSentByMe ? '' : senderName)}</p>
-            <div class="message-bubble relative ${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'}">
-                ${contentHTML}
-                ${isSentByMe ? `<span class="tick">${tickIcon}</span>` : ''}
-                <div class="flex space-x-2 mt-1">
-                    <button class="reply-btn text-xs text-blue-500 hover:underline" data-message-id="${messageKey}">Reply</button>
-                    <button class="forward-btn text-xs text-green-500 hover:underline" onclick="showForwardModal('${encodeURIComponent(message.content || '')}', '${messageKey}')">Forward</button>
-                </div>
-            </div>
-            <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-        `;
-        chatArea.appendChild(messageDiv); // Ensure message is added to DOM
-        chatArea.scrollTop = chatArea.scrollHeight; // Scroll to latest message
-        console.log('Message displayed in chatArea, count:', chatArea.childElementCount);
+    if (!isForActiveChat) {
+        console.log('Message not for active chat, skipping');
+        return;
     }
 
+    const isSentByMe = message.sender_id === currentUserId;
+    const senderName = userMap.get(message.sender_id) || `User ${message.sender_id}`;
+    const status = message.status || 'sent';
+    let tickIcon = '';
+    if (isSentByMe) {
+        tickIcon = status === 'seen' ? '✓✓' : (status === 'delivered' ? '✓' : '');
+    }
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `mb-4 ${isSentByMe ? 'text-right' : 'text-left'} relative`;
+    let contentHTML = '';
+
+    if (message.type === 'text') {
+        contentHTML = message.content || '[No Content]'; // Fallback if content is missing
+    } else if (message.type === 'audio_message') {
+        contentHTML = `<audio controls src="data:audio/webm;base64,${message.content || ''}"></audio>`;
+    } else if (message.type === 'file_message') {
+        contentHTML = `<a href="data:${message.filetype || 'application/octet-stream'};base64,${message.content || ''}" download="${message.filename || 'unknown_file'}" class="text-blue-500 underline">${message.filename || 'Unknown File'}</a>`;
+    } else {
+        contentHTML = message.content || '[Unsupported Message Type]'; // Handle unexpected types
+    }
+
+    messageDiv.innerHTML = `
+        <p class="text-gray-600 text-sm">${activeChat.type === 'group' ? senderName : (isSentByMe ? '' : senderName)}</p>
+        <div class="message-bubble relative ${isSentByMe ? 'bg-indigo-600 text-white' : 'bg-gray-300'}">
+            ${contentHTML} <!-- Ensure content is included -->
+            ${isSentByMe ? `<span class="tick">${tickIcon}</span>` : ''}
+            <div class="flex space-x-2 mt-1">
+                <button class="reply-btn text-xs text-blue-500 hover:underline" data-message-id="${messageKey}">Reply</button>
+                <button class="forward-btn text-xs text-green-500 hover:underline" onclick="showForwardModal('${encodeURIComponent(message.content || '')}', '${messageKey}')">Forward</button>
+            </div>
+        </div>
+        <p class="text-gray-500 text-xs mt-1">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+    `;
+    chatArea.appendChild(messageDiv); // Ensure message is added to DOM
+    chatArea.scrollTop = chatArea.scrollHeight; // Scroll to latest message
+    console.log('Message displayed in chatArea, count:', chatArea.childElementCount);
+}
     // Send Message with Status Tracking
     sendBtn.addEventListener('click', () => {
         console.log('Send button clicked');

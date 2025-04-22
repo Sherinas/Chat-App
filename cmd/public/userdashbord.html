@@ -271,13 +271,11 @@
         // Mock data for development
         const mockUsers = [
             { id: 1, name: "Alice Smith", status: "online" },
-            { id: 2, name: "Bob Johnson", status: "online" },
-            { id: 3, name: "Alan", status: "offline" },
-            { id: 5, name: "Sujith", status: "online" }
+           
         ];
         const mockGroups = [
             { id: 1, name: "Engineering Team", memberCount: 5 },
-            { id: 2, name: "Marketing Team", memberCount: 3 }
+          
         ];
         const mockNotifications = [
             { id: 1, message: "New message from Alice", time: "2025-04-09 10:00" },
@@ -416,11 +414,32 @@ function setActiveChat(chatType, chatId, chatName) {
 }
 
 // Ensure activeChat is set on page load
+// document.addEventListener('DOMContentLoaded', () => {
+//     const initialGroupId = 5; // Known group ID
+//     const initialGroupName = 'Tech support team';
+//     setActiveChat('group', initialGroupId, initialGroupName);
+// });
+
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Page loaded, clearing chat area');
+    chatArea.innerHTML = '';
+    const savedPhoto = localStorage.getItem('profilePhoto');
+    if (savedPhoto) {
+        sidebarProfilePhoto.src = savedPhoto;
+        sidebarProfilePhoto.onerror = () => { sidebarProfilePhoto.src = 'https://via.placeholder.com/48'; };
+    }
+    connectWebSocket();
+    logUserDetails();
+    loadMockData();
+    displayNotifications(mockNotifications);
+    setupSearch();
+    populateEmojis();
     const initialGroupId = 5; // Known group ID
     const initialGroupName = 'Tech support team';
-    setActiveChat('group', initialGroupId, initialGroupName);
+    setActiveChat('group', initialGroupId, initialGroupName); // This will load history
 });
+
+
         // Load Mock Data
         function loadMockData() {
             sidebarName.textContent = localStorage.getItem('sidebarName') || 'John Doe';
@@ -586,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
         //     chatArea.innerHTML = '';
         //     logUserDetails();
         // }
-        function setActiveChat(type, id, name, extraInfo) {
+ function setActiveChat(type, id, name, extraInfo) {
     activeChat = { type, id, name };
     console.log('Active chat set to:', { type, id, name, extraInfo }, 'for User:', localStorage.getItem('user_id'));
     chatHeader.textContent = name || 'Unknown Chat';
@@ -596,9 +615,52 @@ document.addEventListener('DOMContentLoaded', () => {
     if (type === 'group' && ws) {
         connectWebSocket(); // Reconnect with group_id
     }
+    fetchAndDisplayChatHistory();
 }
+
+async function fetchAndDisplayChatHistory() {
+    if (!activeChat || !activeChat.type || !activeChat.id) {
+        console.log('No active chat to fetch history for');
+        return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.warn('No token found, skipping history fetch');
+        return;
+    }
+    const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
+    let url = `http://localhost:8080/chat/history?type=${activeChat.type}`;
+    if (activeChat.type === 'user') {
+        url += `&user_id=${currentUserId}&receiver_id=${activeChat.id}`;
+    } else if (activeChat.type === 'group') {
+        url += `&group_id=${activeChat.id}`;
+    }
+    console.log('Fetching chat history from:', url);
+    try {
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const messages = await res.json();
+            console.log('Fetched chat history:', messages);
+            messages.forEach(message => displayMessage(message));
+        } else {
+            console.error('Failed to fetch chat history:', res.status);
+        }
+
+    } catch (err) {
+        console.error('Error fetching chat history:', err);
+    }
+}
+
+
+
+
+
+
+
         // Display Message with Correct Alignment and Forward
-        const displayedMessages = new Map();
+     const displayedMessages = new Map();
         // function displayMessage(message) {
         //     console.log('Attempting to display message:', message, 'Active chat:', activeChat);
         //     if (!activeChat || !activeChat.type) {
@@ -655,7 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Send Message with Status Tracking
       
-        function displayMessage(message) {
+    function displayMessage(message) {
     console.log('Attempting to display message:', message, 'Active chat:', activeChat);
     if (!activeChat || !activeChat.type || !activeChat.id) {
         console.log('No active chat, skipping display. ActiveChat:', activeChat);
