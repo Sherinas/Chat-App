@@ -306,35 +306,40 @@
 
     // DOM Elements
     const menuBtn = document.getElementById('menuBtn');
-    const sidebar = document.getElementById('sidebar');
-    const chatArea = document.getElementById('chatArea');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const emojiBtn = document.getElementById('emojiBtn');
-    const micBtn = document.getElementById('micBtn');
-    const attachmentBtn = document.getElementById('attachmentBtn');
-    const voiceChatBtn = document.getElementById('voiceChatBtn');
-    const sidebarName = document.getElementById('sidebarName');
-    const sidebarDesignation = document.getElementById('sidebarDesignation');
-    const onlineUsersList = document.getElementById('onlineUsersList');
-    const userGroupsList = document.getElementById('userGroupsList');
-    const sidebarProfilePhoto = document.getElementById('sidebarProfilePhoto');
-    const chatHeader = document.getElementById('chatHeader');
-    const chatSubHeader = document.getElementById('chatSubHeader');
-    const recordingIndicator = document.getElementById('recordingIndicator');
-    const attachmentModal = document.getElementById('attachmentModal');
-    const notificationBtn = document.getElementById('notificationBtn');
-    const notificationModal = document.getElementById('notificationModal');
-    const notificationList = document.getElementById('notificationList');
-    const chatStatusBtn = document.getElementById('chatStatusBtn');
-    const searchInput = document.getElementById('searchInput');
-    const emojiModal = document.getElementById('emojiModal');
-    const emojiList = document.getElementById('emojiList');
-    const forwardModal = document.getElementById('forwardModal');
-    const forwardList = document.getElementById('forwardList');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const notificationBadge = document.getElementById('notificationBadge');
-    const chatSelector = document.getElementById('chatSelector');
+        const sidebar = document.getElementById('sidebar');
+        const chatArea = document.getElementById('chatArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const emojiBtn = document.getElementById('emojiBtn');
+        const micBtn = document.getElementById('micBtn');
+        const attachmentBtn = document.getElementById('attachmentBtn');
+        const sidebarName = document.getElementById('sidebarName');
+        const sidebarDesignation = document.getElementById('sidebarDesignation');
+        const onlineUsersList = document.getElementById('onlineUsersList');
+        const userGroupsList = document.getElementById('userGroupsList');
+        const sidebarProfilePhoto = document.getElementById('sidebarProfilePhoto');
+        const chatHeader = document.getElementById('chatHeader');
+        const chatSubHeader = document.getElementById('chatSubHeader');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const attachmentModal = document.getElementById('attachmentModal');
+        const notificationBtn = document.getElementById('notificationBtn');
+        const notificationModal = document.getElementById('notificationModal');
+        const notificationList = document.getElementById('notificationList');
+        const chatStatusBtn = document.getElementById('chatStatusBtn');
+        const searchInput = document.getElementById('searchInput');
+        const emojiModal = document.getElementById('emojiModal');
+        const emojiList = document.getElementById('emojiList');
+        const forwardModal = document.getElementById('forwardModal');
+        const forwardList = document.getElementById('forwardList');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const notificationBadge = document.getElementById('notificationBadge');
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const saveImageBtn = document.getElementById('saveImageBtn');
+        const documentModal = document.getElementById('documentModal');
+        const documentIframe = document.getElementById('documentIframe');
+        const downloadDocumentBtn = document.getElementById('downloadDocumentBtn');
+
 
     // Global Variables
     let ws;
@@ -461,6 +466,9 @@
         console.log('WebSocket already connected');
         return;
     }
+    if (ws) {
+                ws.close();
+            }
 
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('user_id');
@@ -507,6 +515,13 @@
                 console.log('working...2');
                 message.status = 'delivered';
             }
+            message.targetType = message.targetType || (message.group_id ? 'group' : 'user');
+                    if (message.group_id) message.group_id = parseInt(message.group_id);
+                    if (message.receiver_id) message.receiver_id = parseInt(message.receiver_id);
+                    if (message.type === 'audio_message' && message.content && !message.content.startsWith('http')) {
+                        message.content = `http://localhost:8080/${message.content.replace(/\\/g, '/')}`;
+                    }
+
             console.log('working...3');
             displayMessage(message);
         } catch (err) {
@@ -516,15 +531,22 @@
 
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        alert('Failed to connect to chat server. Retrying...');
     };
 
     ws.onclose = () => {
         console.log('WebSocket closed, reconnecting...');
+        ws = null;
         setTimeout(() => connectWebSocket(groupId), 3000);
     };
 }
 
 function setActiveChat(chatType, chatId, chatName, extraInfo) {
+    if (!chatId || !chatType) {
+                console.error('Invalid chat parameters:', { chatType, chatId, chatName });
+                alert('Please select a valid user or group.');
+                return;
+            }
         activeChat = { type: chatType, id: chatId, name: chatName };
         console.log('Active chat set to:', activeChat, 'Extra Info:', extraInfo);
         chatHeader.textContent = chatName || 'Unknown Chat';
@@ -723,14 +745,47 @@ async function fetchAndDisplayChatHistory() {
                         if (activeChat.type === 'user') message.receiver_id = activeChat.id;
                         else message.group_id = activeChat.id;
                         if (!message.created_at) message.created_at = new Date().toISOString();
+                        if (message.type === 'audio_message' && message.content && !message.content.startsWith('data:') && !message.content.startsWith('http')) {
+                            message.content = `http://localhost:8080/${message.content.replace(/\\/g, '/')}`;
+                        } else if (message.type === 'file_message' && message.content && !message.content.startsWith('data:') && !message.content.startsWith('http')) {
+                            message.content = `http://localhost:8080/${message.content.replace(/\\/g, '/')}`;
+                        }
                         displayMessage(message);
                     });
                     chatArea.scrollTop = chatArea.scrollHeight; // Scroll to latest message
                 } else {
                     console.error('Failed to fetch chat history:', res.status);
+                    const mockHistory = [
+                        { sender_id: 1, content: 'Hello!', created_at: '2025-04-23 10:00', status: 'sent', type: 'text', targetType: 'group', group_id: 5, message_id: 1 },
+                        { sender_id: 5, content: 'Hi there!', created_at: '2025-04-23 10:01', status: 'seen', type: 'text', targetType: 'group', group_id: 5, message_id: 2 },
+                        { sender_id: 1, content: 'uploads/audio_sample.webm', created_at: '2025-04-23 10:02', status: 'sent', type: 'audio_message', targetType: 'group', group_id: 5, filename: 'voice.webm', filetype: 'audio/webm', message_id: 3 },
+                        { sender_id: 1, content: 'Uploads/image_sample.jpg', created_at: '2025-04-23 10:03', status: 'sent', type: 'file_message', targetType: 'group', group_id: 5, filename: 'image.jpg', filetype: 'image/jpeg', message_id: 4 },
+                        { sender_id: 5, content: 'Uploads/doc_sample.pdf', created_at: '2025-04-23 10:04', status: 'sent', type: 'file_message', targetType: 'group', group_id: 5, filename: 'doc.pdf', filetype: 'application/pdf', message_id: 5 }
+                    ];
+                    chatArea.innerHTML = '';
+                    mockHistory.forEach(msg => {
+                        if ((msg.type === 'audio_message' || msg.type === 'file_message') && msg.content && !msg.content.startsWith('http')) {
+                            msg.content = `http://localhost:8080/${msg.content.replace(/\\/g, '/')}`;
+                        }
+                        displayMessage(msg);
+                    });
                 }
             } catch (err) {
                 console.error('Error fetching chat history:', err);
+                const mockHistory = [
+                    { sender_id: 1, content: 'Hello!', created_at: '2025-04-23 10:00', status: 'sent', type: 'text', targetType: 'group', group_id: 5, message_id: 1 },
+                    { sender_id: 5, content: 'Hi there!', created_at: '2025-04-23 10:01', status: 'seen', type: 'text', targetType: 'group', group_id: 5, message_id: 2 },
+                    { sender_id: 1, content: 'uploads/audio_sample.webm', created_at: '2025-04-23 10:02', status: 'sent', type: 'audio_message', targetType: 'group', group_id: 5, filename: 'voice.webm', filetype: 'audio/webm', message_id: 3 },
+                    { sender_id: 1, content: 'Uploads/image_sample.jpg', created_at: '2025-04-23 10:03', status: 'sent', type: 'file_message', targetType: 'group', group_id: 5, filename: 'image.jpg', filetype: 'image/jpeg', message_id: 4 },
+                    { sender_id: 5, content: 'Uploads/doc_sample.pdf', created_at: '2025-04-23 10:04', status: 'sent', type: 'file_message', targetType: 'group', group_id: 5, filename: 'doc.pdf', filetype: 'application/pdf', message_id: 5 }
+                ];
+                chatArea.innerHTML = '';
+                mockHistory.forEach(msg => {
+                    if ((msg.type === 'audio_message' || msg.type === 'file_message') && msg.content && !msg.content.startsWith('http')) {
+                        msg.content = `http://localhost:8080/${msg.content.replace(/\\/g, '/')}`;
+                    }
+                    displayMessage(msg);
+                });
             }
         }
 
@@ -744,11 +799,11 @@ async function fetchAndDisplayChatHistory() {
     const currentUserId = parseInt(localStorage.getItem('user_id')) || 0;
     console.log('Current User ID:', currentUserId, 'Message Sender ID:', message.sender_id, 'Message Content:', message.content);
 
-    const messageKey = message.tempId || `${message.sender_id}-${message.created_at}-${message.content}`;
-    if (displayedMessages.has(messageKey)) {
-        console.log('Duplicate message skipped:', messageKey);
-        return;
-    }
+    const messageKey = message.message_id ? `server-${message.message_id}` : (message.tempId || `${message.sender_id}-${message.created_at || Date.now()}-${message.content || ''}`);
+            if (displayedMessages.has(messageKey)) {
+                console.log('Duplicate message skipped:', messageKey);
+                return;
+            }
     displayedMessages.set(messageKey, message);
 
     const isForActiveChat = 
@@ -777,12 +832,51 @@ async function fetchAndDisplayChatHistory() {
     if (message.type === 'text') {
         contentHTML = message.content || '[No Content]'; // Fallback if content is missing
     } else if (message.type === 'audio_message') {
-        contentHTML = `<audio controls src="data:audio/webm;base64,${message.content || ''}"></audio>`;
+        let fileUrl = message.content; 
+        if (fileUrl && !fileUrl.startsWith('data:') && !fileUrl.startsWith('http')) {
+                    fileUrl = `http://localhost:8080/${fileUrl.replace(/\\/g, '/')}`;
+                } else if (!fileUrl) {
+                    fileUrl = '#';
+                    contentHTML = '[Invalid Audio Message]';
+                }
+                contentHTML = `<audio controls src="${fileUrl}" class="max-w-xs"></audio>`; 
+        
     } else if (message.type === 'file_message') {
-        contentHTML = `<a href="data:${message.filetype || 'application/octet-stream'};base64,${message.content || ''}" download="${message.filename || 'unknown_file'}" class="text-blue-500 underline">${message.filename || 'Unknown File'}</a>`;
+        let fileUrl = message.content;
+                if (fileUrl && !fileUrl.startsWith('data:') && !fileUrl.startsWith('http')) {
+                    fileUrl = `http://localhost:8080/${fileUrl.replace(/\\/g, '/')}`;
+                }
+                if (message.filetype && message.filetype.startsWith('image/')) {
+                    contentHTML = `
+                        <div class="media-box">
+                            <a href="#" class="image-preview-link" data-url="${fileUrl}" data-filename="${message.filename || 'image'}" data-type="${message.filetype}">
+                                <img src="${fileUrl}" alt="${message.filename || 'image'}" class="max-w-xs rounded-lg cursor-pointer">
+                            </a>
+                        </div>
+                    `;
+                }else if  (message.filetype && (message.filetype === 'application/pdf' || message.filetype.includes('msword') || message.filetype.includes('officedocument'))) {       
+                    contentHTML = `
+                        <div class="media-box document-icon">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            <a href="#" class="document-link" data-url="${fileUrl}" data-filename="${message.filename || 'document'}" data-type="${message.filetype}">
+                                ${message.filename || 'Document'}
+                            </a>
+                        </div>
+                    `;
     } else {
-        contentHTML = message.content || '[Unsupported Message Type]'; // Handle unexpected types
-    }
+      
+                    contentHTML = `
+                        <div class="media-box">
+                            <a href="${fileUrl}" download="${message.filename || 'unknown_file'}" class="text-blue-500 underline">${message.filename || 'Unknown File'}</a>
+                        </div>
+                    `;
+                }
+       
+    }else {
+                contentHTML = message.content || '[Unsupported Message Type]';
+            }
 
     messageDiv.innerHTML = `
         <p class="text-gray-600 text-sm">${activeChat.type === 'group' ? senderName : (isSentByMe ? '' : senderName)}</p>
@@ -799,118 +893,160 @@ async function fetchAndDisplayChatHistory() {
     chatArea.appendChild(messageDiv); // Ensure message is added to DOM
     chatArea.scrollTop = chatArea.scrollHeight; // Scroll to latest message
     console.log('Message displayed in chatArea, count:', chatArea.childElementCount);
+    const imageLinks = messageDiv.querySelectorAll('.image-preview-link');
+            imageLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showImageModal(link.dataset.url, link.dataset.filename, link.dataset.type);
+                });
+            });
+
+            const documentLinks = messageDiv.querySelectorAll('.document-link');
+            documentLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showDocumentModal(link.dataset.url, link.dataset.filename, link.dataset.type);
+                });
+            });        
 }
     // Send Message with Status Tracking
     sendBtn.addEventListener('click', () => {
-        console.log('Send button clicked');
-        const content = messageInput.value.trim();
-        console.log('Message content:', content);
-        if (!content) {
-            console.log('Empty message');
-            alert('Please type a message before sending.');
-            return;
-        }
-        if (!activeChat || !activeChat.type || !activeChat.id) {
-            console.log('No active chat');
-            alert('Please select a user or group from the sidebar.');
-            return;
-        }
-        const currentUserId = parseInt(localStorage.getItem('user_id'));
-        if (isNaN(currentUserId)) {
-            console.error('Invalid user_id');
-            localStorage.setItem('user_id', prompt('Enter your user ID:') || 0);
-            return;
-        }
-        const tempMessageId = Date.now();
-        const messageData = {
-            type: activeChat.type === 'user' ? 'personal_message' : 'group_message',
-            targetType: activeChat.type,
-            [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
-            content: content,
-            tempId: tempMessageId,
-            status: 'sent',
-            sender_id: currentUserId
-        };
-        const localMessage = {
-            sender_id: currentUserId,
-            type: 'text',
-            targetType: activeChat.type,
-            [activeChat.type === 'user' ? 'receiver_id' :  'group_id'] : activeChat.id,
-            content: content,
-            created_at: new Date().toISOString(),
-            tempId: tempMessageId,
-            status: 'sent'
-        };
-        console.log('Sending message:', messageData);
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(messageData));
-            console.log('Message sent via WebSocket');
-        } else {
-            console.log('WebSocket not open, displaying locally');
-        }
-        displayMessage(localMessage);
-        messageInput.value = '';
-    });
-
+            console.log('Send button clicked');
+            const content = messageInput.value.trim();
+            console.log('Message content:', content);
+            if (!content) {
+                console.log('Empty message');
+                alert('Please type a message before sending.');
+                return;
+            }
+            if (!activeChat || !activeChat.type || !activeChat.id) {
+                console.log('No active chat');
+                alert('Please select a user or group from the sidebar.');
+                return;
+            }
+            const currentUserId = parseInt(localStorage.getItem('user_id'));
+            if (isNaN(currentUserId)) {
+                console.error('Invalid user_id');
+                localStorage.setItem('user_id', prompt('Enter your user ID:') || 0);
+                return;
+            }
+            const tempMessageId = Date.now();
+            const messageData = {
+                type: activeChat.type === 'user' ? 'personal_message' : 'group_message',
+                targetType: activeChat.type,
+                [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+                content: content,
+                tempId: tempMessageId,
+                status: 'sent',
+                sender_id: currentUserId
+            };
+            const localMessage = {
+                sender_id: currentUserId,
+                type: 'text',
+                targetType: activeChat.type,
+                [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+                content: content,
+                created_at: new Date().toISOString(),
+                tempId: tempMessageId,
+                status: 'sent'
+            };
+            console.log('Sending message:', messageData);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(messageData));
+                console.log('Message sent via WebSocket');
+            } else {
+                console.log('WebSocket not open, reconnecting...');
+                connectWebSocket(activeChat.id);
+            }
+            displayMessage(localMessage);
+            messageInput.value = '';
+        });
     // Mic Button for Recording
     micBtn.addEventListener('click', async () => {
-    if (!isRecording) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const base64Data = reader.result.split(',')[1]; // Extract only the Base64 part
-                    if (!base64Data) {
-                        console.error('No Base64 data extracted');
-                        return;
-                    }
-                    const ws = new WebSocket(`ws://localhost:8081/ws/chat?token=${localStorage.getItem('token')}&group_id=${activeChat?.id || ''}`);
-                    ws.onopen = () => {
-                        ws.send(JSON.stringify({
-                            type: 'audio_message',
-                            content: base64Data,
-                            filename: 'voice.webm',
-                            filetype: 'audio/webm',
-                            [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id
-                        }));
-                        ws.close();
+            if (!activeChat || !activeChat.type || !activeChat.id) {
+                alert('Please select a user or group to send a voice message.');
+                return;
+            }
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const base64Data = reader.result.split(',')[1];
+                            if (!base64Data) {
+                                console.error('No Base64 data extracted');
+                                alert('Failed to process audio.');
+                                return;
+                            }
+                            const messageData = {
+                                type: 'audio_message',
+                                content: base64Data,
+                                filename: 'voice.webm',
+                                filetype: 'audio/webm',
+                                targetType: activeChat.type,
+                                sender_id: parseInt(localStorage.getItem('user_id')),
+                                [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+                                tempId: Date.now()
+                            };
+                            if (ws && ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify(messageData));
+                                displayMessage({
+                                    sender_id: parseInt(localStorage.getItem('user_id')),
+                                    type: 'audio_message',
+                                    content: reader.result,
+                                    filename: 'voice.webm',
+                                    filetype: 'audio/webm',
+                                    targetType: activeChat.type,
+                                    [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+                                    created_at: new Date().toISOString(),
+                                    status: 'sent',
+                                    tempId: messageData.tempId
+                                });
+                            } else {
+                                console.log('WebSocket not open, reconnecting...');
+                                connectWebSocket(activeChat.id);
+                                alert('Chat server not connected. Retrying...');
+                            }
+                        };
+                        reader.readAsDataURL(audioBlob);
+                        stream.getTracks().forEach(track => track.stop());
+                        isRecording = false;
+                        recordingIndicator.classList.add('hidden');
                     };
-                };
-                reader.readAsDataURL(audioBlob);
-                stream.getTracks().forEach(track => track.stop());
-                isRecording = false;
-                recordingIndicator.classList.add('hidden');
-            };
-            mediaRecorder.start();
-            isRecording = true;
-            recordingIndicator.classList.remove('hidden');
-            recordingIndicator.classList.add('recording-animation');
-            setTimeout(() => mediaRecorder.stop(), 5000);
-        } catch (err) {
-            console.error('Microphone access denied:', err);
-            alert('Microphone access is required.');
-        }
-    } else {
-        mediaRecorder.stop();
-    }
-});
-    // Attachment Modal and File Upload
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.id = 'fileInput';
-    fileInput.style.display = 'none';
-    fileInput.accept = 'image/*,video/*,application/*';
-    fileInput.multiple = true;
-    document.body.appendChild(fileInput);
-    attachmentBtn.addEventListener('click', () => {
-        attachmentModal.style.display = 'block';
-        console.log('Attachment modal opened');
-    });
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordingIndicator.classList.remove('hidden');
+                    recordingIndicator.classList.add('recording-animation');
+                    setTimeout(() => mediaRecorder.stop(), 5000);
+                } catch (err) {
+                    console.error('Microphone access denied:', err);
+                    alert('Microphone access is required.');
+                }
+            } else {
+                mediaRecorder.stop();
+            }
+        });
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'fileInput';
+        fileInput.style.display = 'none';
+        fileInput.accept = 'image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        fileInput.multiple = true;
+        document.body.appendChild(fileInput);
+        attachmentBtn.addEventListener('click', () => {
+            attachmentModal.style.display = 'block';
+            console.log('Attachment modal opened');
+        
+  
+}); 
+
+   
+
     document.querySelectorAll('#attachmentModal li').forEach(item => {
         item.addEventListener('click', () => {
             fileInput.click();
@@ -924,6 +1060,12 @@ async function fetchAndDisplayChatHistory() {
             alert('Please select a file.');
             return;
         }
+
+        if (!activeChat || !activeChat.type || !activeChat.id) {
+                console.log('No active chat');
+                alert('Please select a user or group to send files.');
+                return;
+            }
         for (const file of files) {
             const reader = new FileReader();
             reader.onload = () => sendMultimediaMessage('file_message', reader.result.split(',')[1], null, null, file.name, file.type);
@@ -950,18 +1092,18 @@ async function fetchAndDisplayChatHistory() {
 
     function updateNotificationBadge() {
         const count = unreadMessages.size;
-        notificationBadge.textContent = count;
-        notificationBadge.classList.toggle('hidden', count === 0);
-        console.log('Notification badge updated, count:', count);
+            notificationBadge.textContent = count > 0 ? count : '';
+            notificationBadge.classList.toggle('hidden', count === 0);
+            console.log('Notification badge updated, count:', count);
     }
 
     function displayNotifications(notifications) {
         notificationList.innerHTML = '';
-        notifications.forEach(notif => {
-            const li = document.createElement('li');
-            li.className = 'p-2 hover:bg-gray-100';
-            li.innerHTML = `<span>${notif.message}</span><span class="text-xs text-gray-500 ml-2">${notif.time}</span>`;
-            notificationList.appendChild(li);
+            notifications.forEach(notif => {
+                const li = document.createElement('li');
+                li.className = 'p-2 hover:bg-gray-100';
+                li.innerHTML = `<span>${notif.message}</span><span class="text-xs text-gray-500 ml-2">${notif.time}</span>`;
+                notificationList.appendChild(li);
         });
     }
 
@@ -1022,13 +1164,28 @@ async function fetchAndDisplayChatHistory() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                const messages = await res.json();
-                console.log('Fetched unread messages:', messages);
-                messages.forEach(msg => displayMessage(msg));
+                    const messages = await res.json();
+                    console.log('Fetched unread messages:', messages);
+                    messages.forEach(msg => {
+                        if ((msg.type === 'audio_message' || msg.type === 'file_message') && msg.content && !msg.content.startsWith('http')) {
+                            msg.content = `http://localhost:8080/${msg.content.replace(/\\/g, '/')}`;
+                        }
+                        displayMessage(msg);
+                    });
+            
             } else {
                 console.error('Failed to fetch unread messages:', res.status);
-                const mockUnread = [{ sender_id: 1, content: 'Missed you!', created_at: '2025-04-11 14:00', status: 'sent', type: 'text', targetType: 'user', receiver_id: parseInt(localStorage.getItem('user_id')) }];
-                mockUnread.forEach(msg => displayMessage(msg));
+                    const mockUnread = [
+                        { sender_id: 1, content: 'Missed you!', created_at: '2025-04-23 14:00', status: 'sent', type: 'text', targetType: 'user', receiver_id: parseInt(localStorage.getItem('user_id')), message_id: 6 },
+                        { sender_id: 1, content: 'uploads/audio_unread.webm', created_at: '2025-04-23 14:01', status: 'sent', type: 'audio_message', targetType: 'user', receiver_id: parseInt(localStorage.getItem('user_id')), filename: 'voice.webm', filetype: 'audio/webm', message_id: 7 },
+                        { sender_id: 1, content: 'Uploads/image_unread.jpg', created_at: '2025-04-23 14:02', status: 'sent', type: 'file_message', targetType: 'user', receiver_id: parseInt(localStorage.getItem('user_id')), filename: 'image.jpg', filetype: 'image/jpeg', message_id: 8 }
+                    ];
+                    mockUnread.forEach(msg => {
+                        if ((msg.type === 'audio_message' || msg.type === 'file_message') && msg.content && !msg.content.startsWith('http')) {
+                            msg.content = `http://localhost:8080/${msg.content.replace(/\\/g, '/')}`;
+                        }
+                        displayMessage(msg);
+                    });
             }
         } catch (err) {
             console.error('Error fetching unread messages:', err);
@@ -1084,35 +1241,45 @@ async function fetchAndDisplayChatHistory() {
 
     // Multimedia Message Sending
     function sendMultimediaMessage(type, content, receiverId, groupId, filename, filetype) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            console.log('WebSocket not open, reconnecting...');
-            connectWebSocket();
-            return;
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.log('WebSocket not open, reconnecting...');
+                connectWebSocket(activeChat?.id);
+                alert('Chat server not connected. Retrying...');
+                return;
+            }
+            if (!activeChat || !activeChat.type || !activeChat.id) {
+                console.log('No active chat');
+                alert('Please select a user or group to send files.');
+                return;
+            }
+            const senderId = parseInt(localStorage.getItem('user_id'));
+            const tempId = Date.now();
+            const messageData = {
+                type: type,
+                sender_id: senderId,
+                content: content || '',
+                filename: filename || null,
+                filetype: filetype || null,
+                targetType: activeChat.type,
+                [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+                tempId: tempId
+            };
+            console.log('Sending multimedia message:', messageData);
+            ws.send(JSON.stringify(messageData));
+            const localMessage = {
+                sender_id: senderId,
+                type: type,
+                targetType: activeChat.type,
+                [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
+                content: type === 'audio_message' ? content : (filetype.startsWith('image/') ? `data:${filetype};base64,${content}` : content),
+                created_at: new Date().toISOString(),
+                tempId: tempId,
+                status: 'sent',
+                filename: filename,
+                filetype: filetype
+            };
+            displayMessage(localMessage);
         }
-        const senderId = parseInt(localStorage.getItem('user_id'));
-        const messageData = {
-            type: type,
-            sender_id: senderId,
-            content: content || '',
-            filename: filename || null,
-            filetype: filetype || null,
-            targetType: activeChat.type,
-            ...(activeChat.type === 'user' ? { receiver_id: activeChat.id } : { group_id: activeChat.id })
-        };
-        console.log('Sending multimedia message:', messageData);
-        ws.send(JSON.stringify(messageData));
-        const localMessage = {
-            sender_id: senderId,
-            type: type,
-            targetType: activeChat.type,
-            [activeChat.type === 'user' ? 'receiver_id' : 'group_id']: activeChat.id,
-            content: type === 'audio_message' ? '[Audio Message]' : '[File Message]',
-            created_at: new Date().toISOString(),
-            tempId: Date.now(),
-            status: 'sent'
-        };
-        displayMessage(localMessage);
-    }
 
     // Mark Messages as Seen
     function markMessagesAsSeen(chatId, chatType) {
@@ -1138,20 +1305,41 @@ async function fetchAndDisplayChatHistory() {
 
     // Close Modals
     document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', () => {
-            attachmentModal.style.display = 'none';
-            notificationModal.style.display = 'none';
-            emojiModal.style.display = 'none';
-            forwardModal.style.display = 'none';
-            console.log('Modal closed');
+            closeBtn.addEventListener('click', () => {
+                attachmentModal.style.display = 'none';
+                notificationModal.style.display = 'none';
+                emojiModal.style.display = 'none';
+                forwardModal.style.display = 'none';
+                imageModal.style.display = 'none';
+                documentModal.style.display = 'none';
+                console.log('Modal closed');
+            });
         });
-    });
-    window.addEventListener('click', (e) => {
-        if (e.target === attachmentModal) attachmentModal.style.display = 'none';
-        if (e.target === notificationModal) notificationModal.style.display = 'none';
-        if (e.target === emojiModal) emojiModal.style.display = 'none';
-        if (e.target === forwardModal) forwardModal.style.display = 'none';
-    });
+        window.addEventListener('click', (e) => {
+            if (e.target === attachmentModal) attachmentModal.style.display = 'none';
+            if (e.target === notificationModal) notificationModal.style.display = 'none';
+            if (e.target === emojiModal) emojiModal.style.display = 'none';
+            if (e.target === forwardModal) forwardModal.style.display = 'none';
+            if (e.target === imageModal) imageModal.style.display = 'none';
+            if (e.target === documentModal) documentModal.style.display = 'none';
+        });
+
+
+        function showImageModal(url, filename, filetype) {
+            modalImage.src = url;
+            saveImageBtn.href = url;
+            saveImageBtn.download = filename;
+            imageModal.style.display = 'block';
+            console.log('Image modal opened for:', url);
+        }
+
+        function showDocumentModal(url, filename, filetype) {
+            documentIframe.src = url;
+            downloadDocumentBtn.href = url;
+            downloadDocumentBtn.download = filename;
+            documentModal.style.display = 'block';
+            console.log('Document modal opened for:', url);
+        }   
 </script>
 </body>
 </html>
