@@ -6,7 +6,6 @@
     <title>ConnectSphere - Profile</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom background lines */
         .background-lines {
             position: absolute;
             inset: 0;
@@ -18,80 +17,43 @@
             background: rgba(255, 255, 255, 0.1);
             transform-origin: center;
         }
-        .line-1 {
-            width: 200%;
-            height: 1px;
-            top: 20%;
-            left: -50%;
-            transform: rotate(45deg);
-            animation: moveLine1 10s linear infinite;
-        }
-        .line-2 {
-            width: 200%;
-            height: 1px;
-            bottom: 20%;
-            left: -50%;
-            transform: rotate(-45deg);
-            animation: moveLine2 12s linear infinite;
-        }
-        .line-3 {
-            width: 1px;
-            height: 200%;
-            left: 30%;
-            top: -50%;
-            transform: rotate(30deg);
-            animation: moveLine3 8s linear infinite;
-        }
+        .line-1 { width: 200%; height: 1px; top: 20%; left: -50%; transform: rotate(45deg); animation: moveLine1 10s linear infinite; }
+        .line-2 { width: 200%; height: 1px; bottom: 20%; left: -50%; transform: rotate(-45deg); animation: moveLine2 12s linear infinite; }
+        .line-3 { width: 1px; height: 200%; left: 30%; top: -50%; transform: rotate(30deg); animation: moveLine3 8s linear infinite; }
 
-        /* Animations for lines */
-        @keyframes moveLine1 {
-            0% { transform: rotate(45deg) translateX(-100%); }
-            100% { transform: rotate(45deg) translateX(100%); }
-        }
-        @keyframes moveLine2 {
-            0% { transform: rotate(-45deg) translateX(100%); }
-            100% { transform: rotate(-45deg) translateX(-100%); }
-        }
-        @keyframes moveLine3 {
-            0% { transform: rotate(30deg) translateY(-100%); }
-            100% { transform: rotate(30deg) translateY(100%); }
-        }
+        @keyframes moveLine1 { 0% { transform: rotate(45deg) translateX(-100%); } 100% { transform: rotate(45deg) translateX(100%); } }
+        @keyframes moveLine2 { 0% { transform: rotate(-45deg) translateX(100%); } 100% { transform: rotate(-45deg) translateX(-100%); } }
+        @keyframes moveLine3 { 0% { transform: rotate(30deg) translateY(-100%); } 100% { transform: rotate(30deg) translateY(100%); } }
 
-        /* Logo animation */
-        .logo-animation {
-            animation: rotateFlip 4s ease-in-out infinite;
+        .sidebar, .group-area {
+            scrollbar-width: thin;
+            scrollbar-color: #6b7280 transparent;
         }
-        @keyframes rotateFlip {
-            0% { transform: rotate(0deg) scaleX(1); }
-            25% { transform: rotate(90deg) scaleX(1); }
-            50% { transform: rotate(180deg) scaleX(-1); }
-            75% { transform: rotate(270deg) scaleX(-1); }
-            100% { transform: rotate(360deg) scaleX(1); }
-        }
-
-        /* Custom scrollbar */
-        .group-area::-webkit-scrollbar {
+        .sidebar::-webkit-scrollbar, .group-area::-webkit-scrollbar {
             width: 6px;
         }
-        .group-area::-webkit-scrollbar-track {
+        .sidebar::-webkit-scrollbar-track, .group-area::-webkit-scrollbar-track {
             background: transparent;
         }
-        .group-area::-webkit-scrollbar-thumb {
+        .sidebar::-webkit-scrollbar-thumb, .group-area::-webkit-scrollbar-thumb {
             background: #6b7280;
             border-radius: 3px;
         }
-        .group-area::-webkit-scrollbar-thumb:hover {
+        .sidebar::-webkit-scrollbar-thumb:hover, .group-area::-webkit-scrollbar-thumb:hover {
             background: #9ca3af;
         }
 
-        /* Responsive sidebar toggle */
         .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
             transition: transform 0.3s ease-in-out;
+            height: 100vh;
+            overflow-y: auto;
         }
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
-                position: fixed;
                 z-index: 50;
             }
             .sidebar.open {
@@ -101,64 +63,27 @@
                 margin-left: 0 !important;
             }
         }
-
-        /* Notification badge */
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background-color: #ef4444;
-            color: white;
-            border-radius: 9999px;
-            padding: 2px 6px;
-            font-size: 12px;
-            font-weight: bold;
-        }
     </style>
 </head>
 <body class="min-h-screen flex bg-gray-100">
-    <!-- Background Lines -->
     <div class="background-lines">
         <div class="line line-1"></div>
         <div class="line line-2"></div>
         <div class="line line-3"></div>
     </div>
 
-    <!-- Sidebar -->
-    <div id="sidebar" class="sidebar w-64 p-4 flex flex-col h-screen bg-gray-800 text-white shadow-lg">
-        <!-- Profile Section -->
-        <div class="flex items-center mb-6">
-            <a href="/users/dashboard" class="flex items-center">
-                <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center mr-3 logo-animation">
-                    <img id="sidebarProfilePhoto" src="https://via.placeholder.com/48" alt="Profile Photo" class="w-full h-full rounded-full object-cover">
-                </div>
-                <div>
-                    <h2 id="sidebarName" class="text-lg font-semibold">John Doe</h2>
-                    <p id="sidebarDesignation" class="text-sm text-gray-400">Software Engineer</p>
-                </div>
-            </a>
-        </div>
-
-        <!-- Online Users -->
+    <div id="sidebar" class="sidebar w-64 p-4 flex flex-col bg-gray-800 text-white shadow-lg">
         <div class="mb-6">
-            <h3 class="text-sm font-semibold text-gray-400 mb-2">ONLINE USERS</h3>
-            <ul id="onlineUsersList" class="space-y-2">
-                <!-- Dynamically populated -->
-            </ul>
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">ALL USERS</h3>
+            <ul id="usersList" class="space-y-2"></ul>
         </div>
-
-        <!-- Groups -->
-        <div>
-            <h3 class="text-sm font-semibold text-gray-400 mb-2">GROUPS</h3>
-            <ul id="sidebarGroupsList" class="space-y-2">
-                <!-- Dynamically populated -->
-            </ul>
+        <div class="mb-6">
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">MY GROUPS</h3>
+            <ul id="joinedGroupsList" class="space-y-2"></ul>
         </div>
     </div>
 
-    <!-- Profile Area -->
-    <div id="profileArea" class="profile-area flex-1 flex flex-col h-screen bg-gray-100 text-gray-900">
-        <!-- Profile Header -->
+    <div id="profileArea" class="profile-area flex-1 flex flex-col min-h-screen bg-gray-100 text-gray-900 ml-64">
         <div class="bg-gray-200 p-4 flex items-center justify-between shadow-md">
             <div class="flex items-center">
                 <a href="/users/dashboard" id="menuBtn" class="md:hidden p-2 text-gray-600">
@@ -168,80 +93,49 @@
                 </a>
                 <h2 class="text-lg font-semibold">Profile</h2>
             </div>
-            <!-- Notification Icon -->
-            <div class="relative">
-                <button id="notificationBtn" class="p-2 text-gray-600 hover:text-indigo-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                    </svg>
-                    <span id="notificationBadge" class="notification-badge">0</span>
-                </button>
-            </div>
         </div>
 
-        <!-- Profile Content -->
         <div class="flex-1 p-4 overflow-y-auto group-area">
-            <!-- Profile Photo and Details -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h2 class="text-lg font-semibold mb-4">Profile Details</h2>
                 <div class="flex items-center mb-4">
-                    <div class="relative">
-                        <img id="profilePhoto" src="https://via.placeholder.com/96" alt="Profile Photo" class="w-24 h-24 rounded-full object-cover">
-                        <button id="changePhotoBtn" class="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="ml-6">
+                    <img id="profilePhoto" src="https://via.placeholder.com/96" alt="Profile Photo" class="w-24 h-24 rounded-full object-cover mr-6">
+                    <div>
                         <h3 id="profileName" class="text-xl font-semibold">John Doe</h3>
                         <p id="profileEmail" class="text-gray-600">Email: john.doe@example.com</p>
                         <p id="profileEmployeeId" class="text-gray-600">Employee ID: EMP12345</p>
                         <p id="profileDesignation" class="text-gray-600">Designation: Software Engineer</p>
                         <p id="profileStatus" class="text-gray-600">Status: Offline</p>
                     </div>
+                    <button id="changePhotoBtn" class="ml-auto p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            <!-- Groups Section -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                <h3 class="text-lg font-semibold mb-4">My Groups</h3>
-                <ul id="myGroupsList" class="space-y-4">
-                    <!-- Dynamically populated -->
-                </ul>
-            </div>
-
-            <!-- Group Join Requests Section -->
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-lg font-semibold mb-4">Group Join Requests</h3>
-                <ul id="groupRequestsList" class="space-y-4">
-                    <!-- Dynamically populated -->
-                </ul>
+                <h3 class="text-lg font-semibold mb-4">All Groups</h3>
+                <ul id="allGroupsList" class="space-y-4"></ul>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript for Profile Photo, Group Requests, and Notifications -->
     <script>
-        // Sidebar Toggle for Mobile
         const menuBtn = document.getElementById('menuBtn');
         const sidebar = document.getElementById('sidebar');
+        const changePhotoBtn = document.getElementById('changePhotoBtn');
+        const profilePhoto = document.getElementById('profilePhoto');
+
+        // Store pending request IDs for button state management
+        let pendingRequests = [];
 
         menuBtn.addEventListener('click', (e) => {
             e.preventDefault();
             sidebar.classList.toggle('open');
+            console.log('Sidebar toggled:', sidebar.classList.contains('open'));
         });
-
-        // Profile Photo Change
-        const changePhotoBtn = document.getElementById('changePhotoBtn');
-        const profilePhoto = document.getElementById('profilePhoto');
-        const sidebarProfilePhoto = document.getElementById('sidebarProfilePhoto');
-
-        // Load saved profile photo from localStorage
-        const savedPhoto = localStorage.getItem('profilePhoto');
-        if (savedPhoto) {
-            profilePhoto.src = savedPhoto;
-            sidebarProfilePhoto.src = savedPhoto;
-        }
 
         changePhotoBtn.addEventListener('click', () => {
             const input = document.createElement('input');
@@ -254,8 +148,8 @@
                     reader.onload = (event) => {
                         const photoUrl = event.target.result;
                         profilePhoto.src = photoUrl;
-                        sidebarProfilePhoto.src = photoUrl;
-                        localStorage.setItem('profilePhoto', photoUrl); // Save to localStorage
+                        localStorage.setItem('profilePhoto', photoUrl);
+                        console.log('Profile photo updated');
                     };
                     reader.readAsDataURL(file);
                 }
@@ -263,18 +157,20 @@
             input.click();
         });
 
-        // Fetch Profile Data
+        const savedPhoto = localStorage.getItem('profilePhoto');
+        if (savedPhoto) {
+            profilePhoto.src = savedPhoto;
+            console.log('Loaded profile photo from localStorage');
+        }
 
-       
         async function fetchProfile() {
             const token = localStorage.getItem('token');
-            console.log('Retrieved Token:', token);
             if (!token) {
+                console.warn('No token found, redirecting to login');
                 alert('Please log in to view your profile');
                 window.location.href = '/users/login';
                 return;
             }
-           
 
             try {
                 const res = await fetch('http://localhost:8080/users/me', {
@@ -286,59 +182,161 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    // Update profile details
-                    document.getElementById('profileName').textContent = data.name;
-                    document.getElementById('profileEmail').textContent = `Email: ${data.email}`;
-                    document.getElementById('profileEmployeeId').textContent = `Employee ID: ${data.employee_id}`;
-                    document.getElementById('profileDesignation').textContent = `Designation: ${data.designation || 'N/A'}`; // Assuming designation is available
-                    document.getElementById('profileStatus').textContent = `Status: ${data.status}`;
-
-                    // Update sidebar
-                    document.getElementById('sidebarName').textContent = data.name;
-                    document.getElementById('sidebarDesignation').textContent = data.designation || 'N/A';
+                    document.getElementById('profileName').textContent = data.name || 'Unknown User';
+                    document.getElementById('profileEmail').textContent = `Email: ${data.email || 'N/A'}`;
+                    document.getElementById('profileEmployeeId').textContent = `Employee ID: ${data.employee_id || 'N/A'}`;
+                    document.getElementById('profileDesignation').textContent = `Designation: ${data.designation || 'N/A'}`;
+                    document.getElementById('profileStatus').textContent = `Status: ${data.status || 'Offline'}`;
+                    console.log('Fetched profile:', data);
                 } else {
+                    console.error('Failed to fetch profile:', data.error);
                     alert('Failed to fetch profile: ' + (data.error || 'Unknown error'));
                     window.location.href = '/users/login';
                 }
             } catch (err) {
+                console.error('Error fetching profile:', err);
                 alert('Error: ' + err.message);
                 window.location.href = '/users/login';
             }
         }
 
-        // Fetch Online Users (Placeholder - Replace with actual API call)
-        async function fetchOnlineUsers() {
-            const onlineUsersList = document.getElementById('onlineUsersList');
-            onlineUsersList.innerHTML = ''; // Clear existing list
-
-            // Placeholder data - Replace with API call
-            const users = [
-                { name: 'Alice Smith', status: 'online' },
-                { name: 'Bob Johnson', status: 'online' },
-                { name: 'Carol Williams', status: 'online' }
-            ];
-
-            users.forEach(user => {
-                const li = document.createElement('li');
-                li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
-                li.innerHTML = `
-                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                    <span>${user.name}</span>
-                `;
-                onlineUsersList.appendChild(li);
-            });
-        }
-
-        // Fetch User Groups
-        async function fetchUserGroups() {
+        async function fetchUsers() {
             const token = localStorage.getItem('token');
-            const sidebarGroupsList = document.getElementById('sidebarGroupsList');
-            const myGroupsList = document.getElementById('myGroupsList');
-            sidebarGroupsList.innerHTML = '';
-            myGroupsList.innerHTML = '';
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = '';
 
             try {
-                const res = await fetch('http://localhost:8080/users/user-groups', {
+                const res = await fetch('http://localhost:8080/users/all-users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log('Fetched users:', data.users);
+                    data.users.forEach(user => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
+                        li.innerHTML = `
+                            <span class="w-3 h-3 ${user.status === 'online' ? 'bg-green-500' : 'bg-gray-500'} rounded-full mr-2"></span>
+                            <span>${user.name || 'Unknown'}</span>
+                        `;
+                        usersList.appendChild(li);
+                    });
+                } else {
+                    console.error('Failed to fetch users:', res.status);
+                    const mockUsers = [
+                        { id: 1, name: 'Alice Smith', status: 'online' },
+                        { id: 2, name: 'Bob Johnson', status: 'online' },
+                        { id: 3, name: 'Alan', status: 'offline' },
+                        { id: 5, name: 'Sujith', status: 'online' }
+                    ];
+                    mockUsers.forEach(user => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
+                        li.innerHTML = `
+                            <span class="w-3 h-3 ${user.status === 'online' ? 'bg-green-500' : 'bg-gray-500'} rounded-full mr-2"></span>
+                            <span>${user.name}</span>
+                        `;
+                        usersList.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching users:', err);
+                const mockUsers = [
+                    { id: 1, name: 'Alice Smith', status: 'online' },
+                    { id: 2, name: 'Bob Johnson', status: 'online' },
+                    { id: 3, name: 'Alan', status: 'offline' },
+                    { id: 5, name: 'Sujith', status: 'online' }
+                ];
+                mockUsers.forEach(user => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
+                    li.innerHTML = `
+                        <span class="w-3 h-3 ${user.status === 'online' ? 'bg-green-500' : 'bg-gray-500'} rounded-full mr-2"></span>
+                        <span>${user.name}</span>
+                    `;
+                    usersList.appendChild(li);
+                });
+            }
+        }
+
+        async function fetchUserGroups() {
+            const token = localStorage.getItem('token');
+            const joinedGroupsList = document.getElementById('joinedGroupsList');
+            joinedGroupsList.innerHTML = '';
+
+            try {
+                const res = await fetch('http://localhost:8080/user-groups', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    console.log('Fetched user groups:', data.groups);
+                    data.groups.forEach(group => {
+                        const joinedLi = document.createElement('li');
+                        joinedLi.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
+                        joinedLi.innerHTML = `
+                            <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                            </span>
+                            <span>${group.name}</span>
+                        `;
+                        joinedGroupsList.appendChild(joinedLi);
+                    });
+                } else {
+                    console.error('Failed to fetch user groups:', data.error);
+                    const mockGroups = [
+                        { id: 1, name: 'Engineering Team', member_count: 5 },
+                        { id: 2, name: 'Marketing Team', member_count: 3 }
+                    ];
+                    mockGroups.forEach(group => {
+                        const joinedLi = document.createElement('li');
+                        joinedLi.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
+                        joinedLi.innerHTML = `
+                            <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                            </span>
+                            <span>${group.name}</span>
+                        `;
+                        joinedGroupsList.appendChild(joinedLi);
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching user groups:', err);
+                const mockGroups = [
+                    { id: 1, name: 'Engineering Team', member_count: 5 },
+                    { id: 2, name: 'Marketing Team', member_count: 3 }
+                ];
+                mockGroups.forEach(group => {
+                    const joinedLi = document.createElement('li');
+                    joinedLi.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
+                    joinedLi.innerHTML = `
+                        <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                        </span>
+                        <span>${group.name}</span>
+                    `;
+                    joinedGroupsList.appendChild(joinedLi);
+                });
+            }
+        }
+
+        async function fetchAllGroups() {
+            const token = localStorage.getItem('token');
+            const allGroupsList = document.getElementById('allGroupsList');
+            allGroupsList.innerHTML = '';
+
+            try {
+                const res = await fetch('http://localhost:8080/groups/profile/groups', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -348,174 +346,176 @@
                 const data = await res.json();
                 if (res.ok) {
                     data.groups.forEach(group => {
-                        // Sidebar Groups
-                        const sidebarLi = document.createElement('li');
-                        sidebarLi.className = 'flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors';
-                        sidebarLi.innerHTML = `
-                            <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                                </svg>
-                            </span>
-                            <span>${group.name}</span>
-                        `;
-                        sidebarGroupsList.appendChild(sidebarLi);
-
-                        // Profile Groups
-                        const profileLi = document.createElement('li');
-                        profileLi.className = 'flex items-center p-2 rounded-lg hover:bg-gray-100 transition-colors';
-                        profileLi.innerHTML = `
-                            <span class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                                </svg>
-                            </span>
-                            <span class="text-gray-900">${group.name}</span>
-                        `;
-                        myGroupsList.appendChild(profileLi);
-                    });
-                } else {
-                    console.error('Failed to fetch groups:', data.error);
-                }
-            } catch (err) {
-                console.error('Error fetching groups:', err.message);
-            }
-        }
-
-        // Fetch Group Join Requests
-        async function fetchGroupJoinRequests() {
-            const token = localStorage.getItem('token');
-            const groupRequestsList = document.getElementById('groupRequestsList');
-            groupRequestsList.innerHTML = '';
-
-            try {
-                const res = await fetch('http://localhost:8080/groups/join', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    data.requests.forEach(request => {
-                        const li = document.createElement('li');
-                        li.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors';
-                        li.innerHTML = `
+                        const allLi = document.createElement('li');
+                        allLi.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors';
+                        allLi.innerHTML = `
                             <div class="flex items-center">
-                                <span class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
+                                <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                                     </svg>
                                 </span>
-                                <span class="text-gray-900">${request.group_name}</span>
+                                <span class="text-gray-900">${group.name}</span>
                             </div>
-                            <div class="flex space-x-2">
-                                <button class="accept-btn p-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-request-id="${request.id}">
-                                    Accept
+                            ${group.is_member ? '' : `
+                                <button class="join-btn p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600" data-group-id="${group.id}" data-request-id="0">
+                                    Join Request
                                 </button>
-                                <button class="decline-btn p-2 bg-red-500 text-white rounded-lg hover:bg-red-600" data-request-id="${request.id}">
-                                    Decline
-                                </button>
-                            </div>
+                            `}
                         `;
-                        groupRequestsList.appendChild(li);
+                        allGroupsList.appendChild(allLi);
                     });
-
-                    // Update notification badge
-                    updateNotificationBadge();
-
-                    // Add event listeners for accept/decline buttons
-                    addGroupRequestEventListeners();
+                    addJoinGroupEventListeners();
+                    addCancelRequestEventListeners();
+                    console.log('Fetched all groups:', data.groups);
                 } else {
-                    console.error('Failed to fetch group requests:', data.error);
+                    console.error('Failed to fetch groups:', data.error);
+                    const mockGroups = [
+                        { id: 1, name: 'Engineering Team', is_member: true, member_count: 5 },
+                        { id: 2, name: 'Marketing Team', is_member: true, member_count: 3 },
+                        { id: 3, name: 'Design Team', is_member: false, member_count: 4 },
+                        { id: 4, name: 'Sales Team', is_member: false, member_count: 6 }
+                    ];
+                    mockGroups.forEach(group => {
+                        const allLi = document.createElement('li');
+                        allLi.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors';
+                        allLi.innerHTML = `
+                            <div class="flex items-center">
+                                <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                    </svg>
+                                </span>
+                                <span class="text-gray-900">${group.name}</span>
+                            </div>
+                            ${group.is_member ? '' : `
+                                <button class="join-btn p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600" data-group-id="${group.id}" data-request-id="0">
+                                    Join Request
+                                </button>
+                            `}
+                        `;
+                        allGroupsList.appendChild(allLi);
+                    });
+                    addJoinGroupEventListeners();
+                    addCancelRequestEventListeners();
                 }
             } catch (err) {
-                console.error('Error fetching group requests:', err.message);
+                console.error('Error fetching groups:', err);
+                const mockGroups = [
+                    { id: 1, name: 'Engineering Team', is_member: true, member_count: 5 },
+                    { id: 2, name: 'Marketing Team', is_member: true, member_count: 3 },
+                    { id: 3, name: 'Design Team', is_member: false, member_count: 4 },
+                    { id: 4, name: 'Sales Team', is_member: false, member_count: 6 }
+                ];
+                mockGroups.forEach(group => {
+                    const allLi = document.createElement('li');
+                    allLi.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors';
+                    allLi.innerHTML = `
+                        <div class="flex items-center">
+                            <span class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                </span>
+                                <span class="text-gray-900">${group.name}</span>
+                            </div>
+                            ${group.is_member ? '' : `
+                                <button class="join-btn p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600" data-group-id="${group.id}" data-request-id="0">
+                                    Join Request
+                                </button>
+                            `}
+                        `;
+                        allGroupsList.appendChild(allLi);
+                    });
+                    addJoinGroupEventListeners();
+                    addCancelRequestEventListeners();
+                }
             }
-        }
+        
 
-        // Update notification badge based on number of requests
-        const notificationBadge = document.getElementById('notificationBadge');
-        function updateNotificationBadge() {
-            const groupRequestsList = document.getElementById('groupRequestsList');
-            const requestCount = groupRequestsList.children.length;
-            notificationBadge.textContent = requestCount;
-            if (requestCount === 0) {
-                notificationBadge.style.display = 'none';
-            } else {
-                notificationBadge.style.display = 'block';
-            }
-        }
-
-        // Handle Accept/Decline Group Join Requests
-        function addGroupRequestEventListeners() {
-            const acceptButtons = document.querySelectorAll('.accept-btn');
-            const declineButtons = document.querySelectorAll('.decline-btn');
+        function addJoinGroupEventListeners() {
             const token = localStorage.getItem('token');
+            const joinButtons = document.querySelectorAll('.join-btn');
 
-            acceptButtons.forEach(button => {
+            joinButtons.forEach(button => {
                 button.addEventListener('click', async () => {
-                    const requestId = button.getAttribute('data-request-id');
+                    const groupId = parseInt(button.getAttribute('data-group-id'));
                     try {
-                        const res = await fetch('http://localhost:8080//accept-group-request', {
+                        const res = await fetch('http://localhost:8080/groups/join', {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${token}`,
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({ request_id: requestId })
+                            body: JSON.stringify({ group_id: groupId })
                         });
                         const data = await res.json();
                         if (res.ok) {
-                            const listItem = button.closest('li');
-                            listItem.remove();
-                            alert('Group join request accepted!');
-                            updateNotificationBadge();
-                            fetchUserGroups(); // Refresh groups
+                            alert('Join request sent!');
+                            button.textContent = 'Cancel Request';
+                            button.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'join-btn');
+                            button.classList.add('bg-red-500', 'hover:bg-red-600', 'cancel-btn');
+                            button.setAttribute('data-request-id', data.request_id);
+                            pendingRequests.push({ group_id: groupId, request_id: data.request_id });
+                            addCancelRequestEventListeners();
+                            console.log('Sent join request for group:', groupId, 'Request ID:', data.request_id);
                         } else {
-                            alert('Failed to accept request: ' + (data.error || 'Unknown error'));
+                            console.error('Failed to send join request:', data.error);
+                            alert('Failed to send join request: ' + (data.error || 'Unknown error'));
                         }
                     } catch (err) {
-                        alert('Error: ' + err.message);
-                    }
-                });
-            });
-
-            declineButtons.forEach(button => {
-                button.addEventListener('click', async () => {
-                    const requestId = button.getAttribute('data-request-id');
-                    try {
-                        const res = await fetch('http://localhost:8080/users/decline-group-request', {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ request_id: requestId })
-                        });
-                        const data = await res.json();
-                        if (res.ok) {
-                            const listItem = button.closest('li');
-                            listItem.remove();
-                            alert('Group join request declined.');
-                            updateNotificationBadge();
-                        } else {
-                            alert('Failed to decline request: ' + (data.error || 'Unknown error'));
-                        }
-                    } catch (err) {
+                        console.error('Error sending join request:', err);
                         alert('Error: ' + err.message);
                     }
                 });
             });
         }
 
-        // Fetch all data on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchProfile();
-            fetchOnlineUsers();
-            fetchUserGroups();
-            fetchGroupJoinRequests();
+        function addCancelRequestEventListeners() {
+            const token = localStorage.getItem('token');
+            const cancelButtons = document.querySelectorAll('.cancel-btn');
+
+            cancelButtons.forEach(button => {
+                button.addEventListener('click', async () => {
+                    const requestId = button.getAttribute('data-request-id');
+                    const groupId = parseInt(button.getAttribute('data-group-id'));
+                    try {
+                        const res = await fetch('http://localhost:8080/groups/cancel-request', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ request_id: requestId })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            alert('Group join request cancelled.');
+                            button.textContent = 'Join Request';
+                            button.classList.remove('bg-red-500', 'hover:bg-red-600', 'cancel-btn');
+                            button.classList.add('bg-blue-500', 'hover:bg-blue-600', 'join-btn');
+                            button.setAttribute('data-request-id', '0');
+                            pendingRequests = pendingRequests.filter(req => req.request_id !== parseInt(requestId));
+                            addJoinGroupEventListeners();
+                            console.log('Cancelled group request:', requestId);
+                        } else {
+                            console.error('Failed to cancel request:', data.error);
+                            alert('Failed to cancel request: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (err) {
+                        console.error('Error cancelling request:', err);
+                        alert('Error: ' + err.message);
+                    }
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Page loaded, initializing...');
+            await fetchProfile();
+            await fetchUsers();
+            await fetchUserGroups();
+            await fetchAllGroups();
         });
     </script>
 </body>
